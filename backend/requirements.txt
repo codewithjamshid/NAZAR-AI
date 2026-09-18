@@ -1,0 +1,38 @@
+# API
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+pydantic>=2.8,<3
+pydantic-settings>=2.4
+
+# DB
+sqlalchemy>=2.0,<3
+psycopg[binary]>=3.2
+
+# Background jobs
+celery[redis]>=5.4
+redis>=5.0
+
+# Auth
+pyjwt>=2.9
+
+# Medical files
+pydicom>=3.0
+pillow>=10            # also used by pydicom to decode JPEG-compressed DICOM
+
+# AI: M4 chest X-ray reader (CPU is enough)
+# On x86_64 the default torch wheel bundles CUDA (~900 MB). For a CPU-only box use:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2
+torchvision>=0.17
+torchxrayvision>=1.5
+grad-cam>=1.5
+opencv-python-headless>=4.9
+numpy>=1.26
+
+# Misc
+pyyaml>=6.0
+httpx>=0.27
+
+# Tests
+pytest>=8

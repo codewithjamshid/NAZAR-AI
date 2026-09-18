@@ -1,0 +1,12 @@
+[
+  {"key": "regional", "name": "Xorazm viloyat ko'p tarmoqli tibbiyot markazi", "type": "regional",
+   "district": "Urganch", "lat": 41.5533, "lng": 60.6314, "has_ct": true, "has_xray": true},
+  {"key": "xiva_district", "name": "Xiva tuman tibbiyot birlashmasi", "type": "district",
+   "district": "Xiva", "lat": 41.3783, "lng": 60.3639, "has_ct": true, "has_xray": true},
+  {"key": "hazorasp_district", "name": "Hazorasp tuman tibbiyot birlashmasi", "type": "district",
+   "district": "Hazorasp", "lat": 41.3197, "lng": 61.0742, "has_ct": true, "has_xray": true},
+  {"key": "hazorasp_fap", "name": "Pichoqchi qishloq FAP", "type": "fap",
+   "district": "Hazorasp", "lat": 41.25, "lng": 61.02, "has_ct": false, "has_xray": false},
+  {"key": "xiva_fap", "name": "Qorako'l qishloq FAP", "type": "fap",
+   "district": "Xiva", "lat": 41.42, "lng": 60.30, "has_ct": false, "has_xray": false}
+]

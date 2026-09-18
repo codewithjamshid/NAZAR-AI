@@ -1,0 +1,14 @@
+[
+  {"full_name": "Nilufar Matyoqubova", "role": "nurse", "phone": "+998901000001",
+   "password": "demo1234", "facility": "hazorasp_fap"},
+  {"full_name": "Gulnora Sobirova", "role": "nurse", "phone": "+998901000002",
+   "password": "demo1234", "facility": "xiva_fap"},
+  {"full_name": "Sardor Ruzmetov", "role": "operator", "phone": "+998901000003",
+   "password": "demo1234", "facility": "hazorasp_district"},
+  {"full_name": "Dr. Otabek Yusupov", "role": "specialist", "specialty": "neurologist",
+   "phone": "+998901000004", "password": "demo1234", "facility": "regional"},
+  {"full_name": "Dr. Malika Qodirova", "role": "specialist", "specialty": "therapist",
+   "phone": "+998901000005", "password": "demo1234", "facility": "regional"},
+  {"full_name": "Admin", "role": "admin", "phone": "+998901000000",
+   "password": "demo1234", "facility": "regional"}
+]

@@ -1,0 +1,49 @@
+"""Application settings, loaded from environment / repo-root .env."""
+
+from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# backend/app/config.py -> repo root is two levels above the package dir
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=(REPO_ROOT / ".env", ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    database_url: str = "postgresql+psycopg://nazar:nazar@localhost:5432/nazar"
+    redis_url: str = "redis://localhost:6379/0"
+    storage_path: Path = Path("storage")
+    rules_path: Path = Path("rules/triage.yaml")
+    demo_data_path: Path = Path("demo-data")
+    jwt_secret: str = "change-me"
+    jwt_expire_hours: int = 12
+
+    llm_provider: str = "anthropic"
+    llm_api_key: str = ""
+
+    medgemma_url: str = "http://localhost:8001"
+    medgemma_model: str = "google/medgemma-1.5-4b-it"
+    medgemma_stub: bool = True
+    hf_token: str = ""
+
+    ich_weights_path: Path | None = None
+
+    @field_validator("storage_path", "rules_path", "demo_data_path", mode="after")
+    @classmethod
+    def _absolute(cls, value: Path) -> Path:
+        # Relative paths are relative to the repo root, not the process cwd.
+        return value if value.is_absolute() else REPO_ROOT / value
+
+    @field_validator("ich_weights_path", mode="before")
+    @classmethod
+    def _empty_is_none(cls, value):
+        return None if value in ("", None) else value
+
+
+settings = Settings()
