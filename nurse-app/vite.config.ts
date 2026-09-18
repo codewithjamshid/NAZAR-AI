@@ -31,7 +31,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // The API is never cached: clinical data must not be served stale.
-        navigateFallbackDenylist: [/^\/api\//],
+        // The specialist panel lives under /panel/ on the same domain and must
+        // not be answered with the nurse app's index.html.
+        navigateFallbackDenylist: [/^\/api\//, /^\/panel(\/|$)/],
         runtimeCaching: [],
       },
       devOptions: { enabled: false },

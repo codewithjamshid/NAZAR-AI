@@ -51,12 +51,13 @@ def seed_reference(db) -> tuple[dict[str, int], int]:
             "specialty": item.get("specialty"),
             "phone": item["phone"],
             "facility_id": facility_ids.get(item.get("facility")),
-            "password_hash": hash_password(item["password"]),
         }
         row = db.scalar(select(User).where(User.phone == item["phone"]))
         if row is None:
-            db.add(User(**fields))
+            db.add(User(**fields, password_hash=hash_password(item["password"])))
         else:
+            # Never reset an existing password: production replaces the public
+            # demo password, and re-seeding must not quietly bring it back.
             for key, value in fields.items():
                 setattr(row, key, value)
     db.commit()

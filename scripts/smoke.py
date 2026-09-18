@@ -2,6 +2,7 @@
 """End-to-end check of the running stack, to run before the demo.
 
     backend/.venv/bin/python scripts/smoke.py
+    backend/.venv/bin/python scripts/smoke.py --base https://nazarai.nodi.uz
 
 Exercises the real path a nurse and a specialist walk: login, case, BE-FAST,
 upload, worker, queue, decision, close, plus the WebSocket and the guard that
@@ -17,9 +18,18 @@ from pathlib import Path
 import httpx
 import websockets
 
-API = "http://localhost:8000/api/v1"
+BASE = "http://localhost:8000"
+API = f"{BASE}/api/v1"
 WS = "ws://localhost:8000/api/v1/ws/queue"
 PASSWORD = "demo1234"
+
+
+def configure(base: str) -> None:
+    """Point every URL at another deployment, e.g. https://nazarai.nodi.uz."""
+    global BASE, API, WS
+    BASE = base.rstrip("/")
+    API = f"{BASE}/api/v1"
+    WS = ("wss://" if BASE.startswith("https://") else "ws://") + BASE.split("://", 1)[1] + "/api/v1/ws/queue"
 ROOT = Path(__file__).resolve().parent.parent
 
 failures: list[str] = []
@@ -53,7 +63,7 @@ async def collect_events(token: str, seen: list, stop: asyncio.Event) -> None:
 
 async def main() -> int:
     print("health")
-    health = httpx.get("http://localhost:8000/health").json()
+    health = httpx.get(f"{BASE}/health", timeout=20).json()
     check("api, database, redis and rules are up", health["status"] == "ok", str(health))
 
     print("auth and rules")
@@ -104,7 +114,7 @@ async def main() -> int:
     check("the viewer has an image", len(study["images"]["base"]) >= 1)
     if cnn and cnn["heatmap_url"]:
         check("the signed image URL serves the file",
-              httpx.get("http://localhost:8000" + cnn["heatmap_url"]).status_code == 200)
+              httpx.get(BASE + cnn["heatmap_url"], timeout=20).status_code == 200)
 
     print("specialist")
     queue = httpx.get(f"{API}/queue", headers=spec).json()
@@ -139,6 +149,12 @@ async def main() -> int:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", default="http://localhost:8000",
+                        help="deployment to check, e.g. https://nazarai.nodi.uz")
+    configure(parser.parse_args().base)
     try:
         sys.exit(asyncio.run(main()))
     except httpx.HTTPError as exc:
