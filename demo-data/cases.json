@@ -1,0 +1,150 @@
+[
+  {
+    "key": "stroke_in_window",
+    "note": "TZ §13 asosiy ssenariy: Bekmurod aka, insult, oyna ochiq; tuman operatori bosh KT biriktiradi",
+    "nurse_phone": "+998901000001",
+    "patient": {
+      "full_name": "Bekmurod Ismoilov",
+      "birth_year": 1968,
+      "sex": "male",
+      "phone": "+998911112201",
+      "district": "Hazorasp"
+    },
+    "onset_minutes_ago": 40,
+    "befast": {
+      "balance": false,
+      "eyes": false,
+      "face": true,
+      "arms": true,
+      "speech": true
+    },
+    "flags": {
+      "unconscious": false,
+      "breathing_difficulty": false,
+      "chest_pain": false
+    },
+    "chief_complaint": "O'ng qo'li ishlamayapti, gapi tushunarsiz, ertalab 07:40 da boshlandi",
+    "studies": [
+      {
+        "type": "ct_head",
+        "file": "ct/cq500_head_ct_plain.zip"
+      }
+    ]
+  },
+  {
+    "key": "unconscious",
+    "note": "Anketa qizil bayrog'i: hushsizlik",
+    "nurse_phone": "+998901000002",
+    "patient": {
+      "full_name": "Ruslan Yusupov",
+      "birth_year": 1955,
+      "sex": "male",
+      "phone": "+998911112202",
+      "district": "Xiva"
+    },
+    "onset_minutes_ago": 90,
+    "befast": {
+      "balance": true,
+      "eyes": false,
+      "face": false,
+      "arms": false,
+      "speech": false
+    },
+    "flags": {
+      "unconscious": true,
+      "breathing_difficulty": false,
+      "chest_pain": false
+    },
+    "chief_complaint": "Uyda yiqilib tushgan, hushiga kelmayapti"
+  },
+  {
+    "key": "stroke_late",
+    "note": "Insult shubhasi, lekin 4,5 soatlik oyna yopilgan",
+    "nurse_phone": "+998901000001",
+    "patient": {
+      "full_name": "Zulfiya Karimova",
+      "birth_year": 1962,
+      "sex": "female",
+      "phone": "+998911112203",
+      "district": "Hazorasp"
+    },
+    "onset_minutes_ago": 400,
+    "befast": {
+      "balance": false,
+      "eyes": false,
+      "face": true,
+      "arms": false,
+      "speech": false
+    },
+    "flags": {
+      "unconscious": false,
+      "breathing_difficulty": false,
+      "chest_pain": false
+    },
+    "chief_complaint": "Kechqurun yuzining bir tomoni osilib qolgan"
+  },
+  {
+    "key": "cxr_findings",
+    "note": "TZ §13 ikkinchi holat: ko'krak rentgeni, plyonka surati",
+    "nurse_phone": "+998901000002",
+    "patient": {
+      "full_name": "Dilnoza Rahimova",
+      "birth_year": 1981,
+      "sex": "female",
+      "phone": "+998911112204",
+      "district": "Xiva"
+    },
+    "onset_minutes_ago": null,
+    "befast": {
+      "balance": false,
+      "eyes": false,
+      "face": false,
+      "arms": false,
+      "speech": false
+    },
+    "flags": {
+      "unconscious": false,
+      "breathing_difficulty": false,
+      "chest_pain": false
+    },
+    "chief_complaint": "Bir haftadan beri yo'tal va isitma",
+    "studies": [
+      {
+        "type": "cxr",
+        "file": "cxr/00027426_000.png"
+      }
+    ]
+  },
+  {
+    "key": "cxr_second_reader",
+    "note": "Ikkinchi rentgen: zona AI raqamlaridan chiqadi",
+    "nurse_phone": "+998901000001",
+    "patient": {
+      "full_name": "Olim Sattorov",
+      "birth_year": 1974,
+      "sex": "male",
+      "phone": "+998911112205",
+      "district": "Hazorasp"
+    },
+    "onset_minutes_ago": null,
+    "befast": {
+      "balance": false,
+      "eyes": false,
+      "face": false,
+      "arms": false,
+      "speech": false
+    },
+    "flags": {
+      "unconscious": false,
+      "breathing_difficulty": false,
+      "chest_pain": true
+    },
+    "chief_complaint": "Ko'krak og'rig'i, nafas qisishi",
+    "studies": [
+      {
+        "type": "cxr",
+        "file": "cxr/00000001_000.png"
+      }
+    ]
+  }
+]

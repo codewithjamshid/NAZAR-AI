@@ -19,6 +19,10 @@ pyjwt>=2.9
 # Medical files
 pydicom>=3.0
 pillow>=10            # also used by pydicom to decode JPEG-compressed DICOM
+# Hospital CT/CR series arrive JPEG Lossless or JPEG 2000 compressed
+pylibjpeg>=2.0
+pylibjpeg-libjpeg>=2.1
+pylibjpeg-openjpeg>=2.1
 
 # AI: M4 chest X-ray reader (CPU is enough)
 # On x86_64 the default torch wheel bundles CUDA (~900 MB). For a CPU-only box use:

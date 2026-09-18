@@ -134,13 +134,20 @@ def test_queue_is_sorted_red_first_and_respects_the_specialty_filter(client, wor
     client.post(f"{API}/cases/{yellow_case}/anamnesis", headers=nurse,
                 json={"befast": {"face": False}, "flags": {}})
 
+    # The dev database also holds seeded demo cases, so assert on ordering and
+    # membership rather than on an exact list.
     queue = client.get(f"{API}/queue", headers=auth(client, "+4")).json()
-    assert [row["zone"] for row in queue][:2] == ["red", "yellow"]
-    assert queue[0]["case_id"] == red_case
-    assert queue[0]["summary"] and queue[0]["waiting_min"] >= 0
+    zones = [row["zone"] for row in queue]
+    assert zones == sorted(zones, key=lambda zone: {"red": 0, "yellow": 1, "green": 2}[zone])
+    positions = {row["case_id"]: index for index, row in enumerate(queue)}
+    assert positions[red_case] < positions[yellow_case]
+    mine_row = next(row for row in queue if row["case_id"] == red_case)
+    assert mine_row["summary"] and mine_row["waiting_min"] >= 0
 
     mine = client.get(f"{API}/queue?mine=true", headers=auth(client, "+4")).json()
-    assert [row["case_id"] for row in mine] == [red_case]
+    assert red_case in {row["case_id"] for row in mine}
+    assert yellow_case not in {row["case_id"] for row in mine}
+    assert {row["specialist_type"] for row in mine} == {"neurologist"}
 
     assert client.get(f"{API}/queue", headers=nurse).status_code == 403
 

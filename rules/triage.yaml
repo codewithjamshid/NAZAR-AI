@@ -35,6 +35,15 @@ ct_head:
 
 # --- Ko'krak rentgeni (TZ §7 M4, §8) -----------------------------------------
 cxr:
+  # O'LCHOV (18.09.2026, torchxrayvision densenet121-res224-all, demo-data/cxr):
+  # modelning chiqishi 0,5 atrofida zich to'plangan. Uchta namunada 0,5 chegarasidan
+  # 7, 8 va 10 ta patologiya o'tdi, 0,6 dan esa atigi 1, 1 va 0 ta.
+  #   00000001_000.png  eng yuqori: Cardiomegaly 0,63
+  #   00027426_000.png  eng yuqori: Mass 0,61
+  #   siim_..._sample.dcm eng yuqori: Mass 0,58
+  # Ya'ni 0,5 chegarasi + "ikki patologiya -> sariq" qoidasi bilan deyarli har bir
+  # rentgen sariq chiqadi va yashil zona amalda bo'lmaydi. Agar bu kutilmagan bo'lsa,
+  # finding_min ni ~0,6 ga ko'tarish kerak. Qarorni neyroxirurg qabul qiladi.
   finding_min: 0.5   # "patologiya >= 0,5 belgilanadi"
   red:
     Pneumothorax: 0.7
