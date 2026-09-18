@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
-    llm_model: str = "claude-opus-5"
+    llm_model: str = ""   # empty -> provider default (see services/report.py DEFAULT_MODELS)
 
     medgemma_url: str = "http://localhost:8001"
     medgemma_model: str = "google/medgemma-1.5-4b-it"

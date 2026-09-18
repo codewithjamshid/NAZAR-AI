@@ -488,42 +488,23 @@ def gather_inputs(case) -> TriageInputs:
     )
 
 
-def _model_versions(case) -> list[str]:
-    versions = []
-    for study in case.studies:
-        for result in study.ai_results:
-            if result.model_version and result.model_version not in versions:
-                versions.append(result.model_version)
-    return versions
-
-
 STICKY_STATUSES = {"in_review", "decided", "closed"}
+REPORT_DEBOUNCE_SECONDS = 3
 
 
 def triage_case(db, case, *, now=None, actor_user_id: int | None = None):
-    """Recompute triage for a case, store the result and move the case status."""
+    """Recompute triage for a case, store the result and move the case status.
+
+    The stored summary is the deterministic template, so the nurse gets an
+    answer inside her request. When a cloud model is configured, `commit_triage`
+    hands the row to the worker, which upgrades the text afterwards.
+    """
     from app.models import CaseStatus, StudyStatus, TriageResult
     from app.services import audit, report
     from app.services.rules import load_rules
 
     rules = load_rules()
-    inputs = gather_inputs(case)
-    outcome = evaluate(inputs, rules, now)
-
-    context = {
-        "zone": outcome.zone,
-        "specialist_type": outcome.specialist_type,
-        "route": outcome.route,
-        "reasons": outcome.reasons,
-        "readers_agree": outcome.readers_agree,
-        "time_window_min": outcome.time_window_min,
-        "rules_version": outcome.rules_version,
-        "models": _model_versions(case),
-        "patient_age": None,
-    }
-    if case.patient and case.patient.birth_year:
-        context["patient_age"] = (now or _now()).year - case.patient.birth_year
-    nurse_text, specialist_text, report_model = report.generate(context)
+    outcome = evaluate(gather_inputs(case), rules, now)
 
     result = TriageResult(
         case_id=case.id,
@@ -536,11 +517,16 @@ def triage_case(db, case, *, now=None, actor_user_id: int | None = None):
         rules_version=outcome.rules_version,
         signals_json=outcome.signals,
         stroke_json=outcome.stroke,
-        summary_nurse=nurse_text,
-        summary_specialist=specialist_text,
-        report_model=report_model,
     )
     db.add(result)
+    db.flush()
+    nurse_text, specialist_text, report_model = report.template_report(
+        report.report_context(case, result)
+    )
+    result.summary_nurse = nurse_text
+    result.summary_specialist = specialist_text
+    result.report_model = report_model
+    db.info.setdefault("pending_reports", []).append(result.id)
 
     case.zone = outcome.zone
     case.specialist_type = outcome.specialist_type
@@ -568,8 +554,30 @@ def triage_case(db, case, *, now=None, actor_user_id: int | None = None):
             "signals": outcome.signals,
             "rules_version": outcome.rules_version,
             "readers_agree": outcome.readers_agree,
-            "report_model": report_model,
         },
     )
     db.flush()
     return result
+
+
+def commit_triage(db, case) -> None:
+    """Commit, tell the panel, and queue the cloud report for any new triage rows."""
+    from app.services import events, report
+
+    pending = db.info.pop("pending_reports", [])
+    db.commit()
+    db.refresh(case)
+    events.publish(events.case_event(case))
+    if not pending or not report.llm_enabled():
+        return
+    from app.workers.tasks import write_report
+
+    for triage_id in pending:
+        try:
+            # A short delay lets back-to-back triages (questionnaire, then each
+            # reader) collapse: only the newest row is sent to the cloud model.
+            write_report.apply_async((triage_id,), countdown=REPORT_DEBOUNCE_SECONDS)
+        except Exception as exc:  # noqa: BLE001 - the template is already stored
+            import logging
+
+            logging.getLogger(__name__).warning("report task not queued: %s", exc)

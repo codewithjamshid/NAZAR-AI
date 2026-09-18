@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models import Anamnesis, StudyType, User, UserRole
 from app.schemas.anamnesis import AnamnesisIn, LabValuesIn
-from app.services import audit, case_view, events
+from app.services import audit, case_view
 from app.services.auth import get_visible_case, require_roles
-from app.services.triage import triage_case
+from app.services.triage import commit_triage, triage_case
 
 router = APIRouter(prefix="/cases", tags=["anamnesis"])
 
@@ -46,9 +46,7 @@ def save_anamnesis(
     audit.record(db, action="anamnesis.save", user_id=user.id, case_id=case.id,
                  payload={"befast": befast, "flags": structured["flags"]})
     triage_case(db, case, actor_user_id=user.id)
-    db.commit()
-    db.refresh(case)
-    events.publish(events.case_event(case))
+    commit_triage(db, case)
     return case_view.case_detail(db, case)
 
 
@@ -69,9 +67,7 @@ def confirm_labs(
     audit.record(db, action="labs.confirm", user_id=user.id, case_id=case.id,
                  payload={"values": structured["labs"]})
     triage_case(db, case, actor_user_id=user.id)
-    db.commit()
-    db.refresh(case)
-    events.publish(events.case_event(case))
+    commit_triage(db, case)
     return case_view.case_detail(db, case)
 
 

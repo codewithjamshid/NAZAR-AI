@@ -108,22 +108,76 @@ def test_the_patient_name_never_reaches_the_report_generator(db, case_with_cxr, 
     """TZ §11: only numbers and findings leave the building, never an identity."""
     import json
 
+    from app.config import settings
     from app.services import report
 
     case, study = case_with_cxr
     case.patient.full_name = "Bekmurod Ismoilov"
     case.patient.phone = "+998911112233"
+    tasks._process(db, study)
+    row = triage_case(db, case)
+
     captured: dict = {}
 
     def spy(context):
         captured.update(context)
-        return report.template_report(context)
+        captured["_sent_to_model"] = report._user_message(context)
+        return "matn", "matn", "spy-model"
 
-    monkeypatch.setattr(report, "generate", spy)
-    tasks._process(db, study)
-    triage_case(db, case)
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+    monkeypatch.setattr(report, "llm_report", spy)
+    tasks.upgrade_report(db, row.id)
 
     payload = json.dumps(captured, ensure_ascii=False, default=str)
     assert "Bekmurod" not in payload and "+998911112233" not in payload
     assert captured["patient_age"] == 46          # age is fine, identity is not
     assert captured["zone"] and captured["reasons"]
+
+
+def test_upgrade_replaces_the_template_or_keeps_it(db, case_with_cxr, monkeypatch):
+    from app.config import settings
+    from app.services import report
+
+    case, study = case_with_cxr
+    tasks._process(db, study)
+    row = triage_case(db, case)
+    assert row.report_model == report.TEMPLATE_VERSION
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+
+    monkeypatch.setattr(report, "llm_report",
+                        lambda context: ("Sodda matn.", "Batafsil matn.", "gemini-2.5-flash"))
+    assert tasks.upgrade_report(db, row.id)["status"] == "ok"
+    assert row.report_model == "gemini-2.5-flash" and row.summary_nurse == "Sodda matn."
+
+    row2 = triage_case(db, case)
+
+    def rejected(context):
+        raise report.ReportRejected("kirishda bo'lmagan klinik atama: ekg")
+
+    monkeypatch.setattr(report, "llm_report", rejected)
+    assert tasks.upgrade_report(db, row2.id)["status"] == "template_kept"
+    assert row2.report_model == report.TEMPLATE_VERSION
+
+    def limited(context):
+        raise report.RateLimited("429")
+
+    monkeypatch.setattr(report, "llm_report", limited)
+    with pytest.raises(report.RateLimited):
+        tasks.upgrade_report(db, row2.id)
+
+
+def test_a_superseded_triage_row_is_not_sent_to_the_cloud(db, case_with_cxr, monkeypatch):
+    from app.config import settings
+    from app.services import report
+
+    case, study = case_with_cxr
+    old = triage_case(db, case)
+    triage_case(db, case)
+    db.refresh(case)
+    monkeypatch.setattr(settings, "llm_api_key", "test-key")
+
+    def must_not_run(context):
+        raise AssertionError("a superseded row must not reach the model")
+
+    monkeypatch.setattr(report, "llm_report", must_not_run)
+    assert tasks.upgrade_report(db, old.id)["status"] == "superseded"

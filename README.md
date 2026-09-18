@@ -17,7 +17,7 @@ Hackathon MVP for the National AI Hackathon, Khorezm, 17–20 September 2026
 | Triage engine (M6) | Rules in [rules/triage.yaml](rules/triage.yaml), owned by the neurosurgeon; 30 tests |
 | Chest X-ray reader (M4) | torchxrayvision DenseNet121, 18 pathologies, Grad-CAM heatmap, ~2 s |
 | Head CT (M3) | DICOM series, brain window, slice viewer; MedGemma reads it, ICH CNN is the optional second reader |
-| Report (M7) | Uzbek template always; Claude API when `LLM_API_KEY` is set, rejected if it invents a diagnosis |
+| Report (M7) | Uzbek template first; Gemini (or Claude) rewrites it in the worker, rejected if it names a diagnosis, drug or procedure the input never had |
 | Lab OCR (M5), voice (M2) | MedGemma / faster-whisper, both with their documented fallbacks |
 | API | 21 endpoints + `WS /ws/queue`, JWT, per-facility visibility, signed image URLs, audit log |
 | Nurse PWA | `nurse-app/` — screens N1–N6, offline queue |
@@ -76,7 +76,7 @@ stay yellow rather than as a silent pass.
 cd backend && .venv/bin/python -m pytest -q
 ```
 
-75 tests: the triage rules, the AI pipeline from upload to zone, DICOM
+94 tests: the triage rules, the AI pipeline from upload to zone, DICOM
 anonymisation, MedGemma's retry contract, signed URLs, role visibility and the
 demo path. Against a running stack, `scripts/smoke.py` checks the same journey
 end to end including the worker and the WebSocket.

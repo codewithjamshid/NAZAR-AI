@@ -201,8 +201,7 @@ def process_study(study_id: int) -> dict:
     """Read one uploaded study, then re-run triage for its case (TZ §5)."""
     from app.db import SessionLocal
     from app.models import Study, StudyStatus
-    from app.services import events
-    from app.services.triage import triage_case
+    from app.services.triage import commit_triage, triage_case
 
     with SessionLocal() as db:
         study = db.get(Study, study_id)
@@ -224,37 +223,62 @@ def process_study(study_id: int) -> dict:
 
         case = study.case
         triage_case(db, case)
-        db.commit()
-        db.refresh(case)
-        events.publish(events.case_event(case))
+        commit_triage(db, case)
         return {"study_id": study_id, "status": study.status, "zone": case.zone}
 
 
-@celery_app.task(name="write_report")
-def write_report(case_id: int) -> dict:
-    """Upgrade the latest triage summary with the cloud LLM when a key is set."""
+def upgrade_report(db, triage_id: int) -> dict:
+    """Replace a triage row's template text with the cloud model's, if it passes the guard.
+
+    Raises `report.RateLimited` so the Celery task can try again later; every
+    other failure keeps the template that is already stored.
+    """
+    from app.models import TriageResult
+    from app.services import events, report
+
+    row = db.get(TriageResult, triage_id)
+    if row is None:
+        return {"triage_id": triage_id, "status": "missing"}
+    if not report.llm_enabled():
+        return {"triage_id": triage_id, "status": "skipped"}
+
+    case = row.case
+    newest = max((result.id for result in case.triage_results), default=row.id)
+    if row.id != newest:
+        # A later triage replaced this one; the free-tier quota is too small to
+        # spend on text nobody will read.
+        return {"triage_id": triage_id, "status": "superseded"}
+    try:
+        nurse, specialist, model = report.llm_report(report.report_context(case, row))
+    except report.RateLimited:
+        raise
+    except Exception as exc:  # noqa: BLE001 - the template is already stored
+        log.warning("LLM report for triage %s kept the template: %s", triage_id, exc)
+        return {"triage_id": triage_id, "status": "template_kept", "reason": str(exc)[:200]}
+
+    row.summary_nurse, row.summary_specialist, row.report_model = nurse, specialist, model
+    db.commit()
+    events.publish(events.case_event(case, kind="case.report"))
+    return {"triage_id": triage_id, "status": "ok", "report_model": model}
+
+
+REPORT_RETRY_DELAYS = (20, 40, 60, 90)   # seconds; the free tier quota is per minute
+
+
+@celery_app.task(name="write_report", bind=True, max_retries=len(REPORT_RETRY_DELAYS))
+def write_report(self, triage_id: int) -> dict:
+    """Upgrade one triage summary with the cloud LLM (TZ §7 M7)."""
     from app.db import SessionLocal
-    from app.models import Case
     from app.services import report
 
-    if not settings.llm_api_key:
-        return {"case_id": case_id, "status": "skipped"}
-
     with SessionLocal() as db:
-        case = db.get(Case, case_id)
-        if case is None or not case.triage_results:
-            return {"case_id": case_id, "status": "missing"}
-        latest = case.triage_results[-1]
-        context = {
-            "zone": latest.zone,
-            "specialist_type": latest.specialist_type,
-            "route": latest.route,
-            "reasons": latest.reasons_json,
-            "readers_agree": latest.readers_agree,
-            "time_window_min": latest.time_window_min,
-            "rules_version": latest.rules_version,
-        }
-        nurse, specialist, model = report.generate(context)
-        latest.summary_nurse, latest.summary_specialist, latest.report_model = nurse, specialist, model
-        db.commit()
-        return {"case_id": case_id, "status": "ok", "report_model": model}
+        try:
+            return upgrade_report(db, triage_id)
+        except report.RateLimited as exc:
+            if self.request.retries >= len(REPORT_RETRY_DELAYS):
+                log.warning("LLM report for triage %s: quota still exhausted, template kept",
+                            triage_id)
+                return {"triage_id": triage_id, "status": "template_kept", "reason": "429"}
+            delay = REPORT_RETRY_DELAYS[self.request.retries]
+            log.info("LLM report for triage %s rate limited, retrying in %ss", triage_id, delay)
+            raise self.retry(exc=exc, countdown=delay)

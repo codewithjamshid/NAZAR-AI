@@ -67,6 +67,9 @@ def health() -> dict:
         rules_status = f"error: {exc}"
 
     status = "ok" if "ok" == db_status == redis_status == rules_status else "degraded"
+    from app.ai import ich
+    from app.services import report
+
     return {
         "status": status,
         "db": db_status,
@@ -74,5 +77,27 @@ def health() -> dict:
         "rules": rules_status,
         "rules_version": rules_version,
         "medgemma_stub": settings.medgemma_stub,
-        "ich_second_reader": __import__("app.ai.ich", fromlist=["is_available"]).is_available(),
+        "medgemma": _medgemma_status(),
+        "ich_second_reader": ich.is_available(),
+        "report_llm": f"{settings.llm_provider}/{report.model_name()}"
+        if report.llm_enabled() else "template",
     }
+
+
+def _medgemma_status() -> str:
+    """Reachability of the GPU box behind MEDGEMMA_URL (the ngrok link)."""
+    if settings.medgemma_stub:
+        return "stub"
+    import httpx
+
+    try:
+        response = httpx.get(
+            settings.medgemma_url.rstrip("/") + "/health",
+            headers={"ngrok-skip-browser-warning": "true"},
+            timeout=4.0,
+        )
+        response.raise_for_status()
+        body = response.json()
+        return f"ok ({body.get('device', '?')}, loaded={body.get('loaded')})"
+    except Exception as exc:  # noqa: BLE001
+        return f"unreachable: {type(exc).__name__}"

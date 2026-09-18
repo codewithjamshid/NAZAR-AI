@@ -19,7 +19,16 @@ Tekshiruv:
 curl -s localhost:8000/health
 ```
 
-`status: ok` bo'lishi kerak. Butun oqimni bir buyruq bilan tekshirish:
+`status: ok` bo'lishi kerak. `report_llm` hisobot qaysi model bilan yozilishini,
+`medgemma` esa GPU serverga ulanishni ko'rsatadi: `stub`, `ok (cuda, loaded=True)`
+yoki `unreachable`.
+
+Gemini bepul tarifi har bir model uchun kuniga ~20 so'rov beradi. Har bir
+`seed --cases` 5 ta so'rov sarflaydi, shuning uchun demo oldidan qayta-qayta
+seed qilmang: tayyor holatlarning matni bazada saqlanib qoladi. Limit tugasa
+tizim to'xtamaydi, o'zbekcha shablon matn chiqadi.
+
+Butun oqimni bir buyruq bilan tekshirish:
 
 ```bash
 backend/.venv/bin/python scripts/smoke.py

@@ -31,3 +31,12 @@ def no_celery(monkeypatch):
 
     monkeypatch.setattr(tasks.process_study, "delay", lambda *a, **k: None)
     monkeypatch.setattr(tasks.write_report, "delay", lambda *a, **k: None)
+    monkeypatch.setattr(tasks.write_report, "apply_async", lambda *a, **k: None)
+
+
+@pytest.fixture(autouse=True)
+def no_cloud_llm(monkeypatch):
+    """.env may hold a real LLM key; tests never spend it. LLM tests opt back in."""
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "llm_api_key", "")

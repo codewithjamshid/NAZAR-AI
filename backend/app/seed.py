@@ -67,7 +67,7 @@ def seed_cases(db) -> list[dict]:
     """Create the demo cases through the real pipeline, so the AI actually runs."""
     from app.ai.medgemma import cache_key
     from app.services import storage
-    from app.services.triage import triage_case
+    from app.services.triage import commit_triage, triage_case
     from app.workers.tasks import process_study
 
     created = []
@@ -122,7 +122,7 @@ def seed_cases(db) -> list[dict]:
             study_ids.append(study.id)
 
         triage_case(db, case)
-        db.commit()
+        commit_triage(db, case)
 
         for study_id in study_ids:
             process_study(study_id)      # run inline: seeding should be deterministic

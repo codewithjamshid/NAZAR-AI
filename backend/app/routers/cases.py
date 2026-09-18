@@ -11,7 +11,7 @@ from app.models import Case, CaseStatus, Patient, User, UserRole
 from app.schemas.cases import CaseCreate, CaseOut
 from app.services import audit, case_view, events
 from app.services.auth import case_visible_to, get_current_user, get_visible_case, require_roles
-from app.services.triage import triage_case
+from app.services.triage import commit_triage, triage_case
 
 router = APIRouter(prefix="/cases", tags=["cases"])
 
@@ -103,9 +103,7 @@ def recompute_triage(
     """Re-run the rules, e.g. after the neurosurgeon edits rules/triage.yaml."""
     case = get_visible_case(db, case_id, user)
     triage_case(db, case, actor_user_id=user.id)
-    db.commit()
-    db.refresh(case)
-    events.publish(events.case_event(case))
+    commit_triage(db, case)
     return case_view.case_detail(db, case)
 
 
