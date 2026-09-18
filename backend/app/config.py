@@ -38,7 +38,12 @@ class Settings(BaseSettings):
 
     ich_weights_path: Path | None = None
 
-    stt_model: str = "small"   # faster-whisper size; "medium" is better but ~1.5 GB
+    # Speech to text (TZ §7 M2). "gemini": cloud, strong on Uzbek, needs a key and
+    # sends the audio to Google. "whisper": local faster-whisper, nothing leaves.
+    stt_provider: str = "gemini"
+    stt_model: str = "gemini-3.1-flash-lite,gemini-3.5-flash"   # tried in order
+    stt_api_key: str = ""           # empty -> LLM_API_KEY
+    whisper_model: str = "small"    # faster-whisper size for the local provider
     stt_language: str = "uz"
 
     @field_validator("storage_path", "rules_path", "demo_data_path", mode="after")

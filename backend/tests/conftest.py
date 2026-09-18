@@ -1,3 +1,12 @@
+import os
+
+# Tests never touch the demo database: the running stack commits to `nazar`
+# while pytest runs, which made two tests flaky and put test cases on the
+# specialist's live panel. Must be set before anything imports app.config.
+os.environ["DATABASE_URL"] = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql+psycopg://nazar:nazar@localhost:5432/nazar_test"
+)
+
 import pytest
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
@@ -40,3 +49,11 @@ def no_cloud_llm(monkeypatch):
     from app.config import settings
 
     monkeypatch.setattr(settings, "llm_api_key", "")
+
+
+@pytest.fixture(autouse=True)
+def no_live_events(monkeypatch):
+    """Keep test cases off the WebSocket that the live panel listens to."""
+    from app.services import events
+
+    monkeypatch.setattr(events, "publish", lambda *a, **k: None)

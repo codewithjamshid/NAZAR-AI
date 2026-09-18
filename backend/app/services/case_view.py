@@ -153,6 +153,7 @@ def case_detail(db: Session, case, *, with_name: bool = True) -> dict:
             "labs": (anamnesis.structured_json or {}).get("labs", {}),
             "chief_complaint": anamnesis.chief_complaint,
             "voice_transcript": anamnesis.voice_transcript,
+            "voice_card": (anamnesis.structured_json or {}).get("voice_card"),
         } if anamnesis else None,
         "studies": [study_view(study) for study in case.studies],
         "triage": triage_view(triage),

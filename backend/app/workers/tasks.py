@@ -180,18 +180,34 @@ def _process(db, study) -> bool:
     elif study.type == StudyType.VOICE:
         from app.ai import stt
 
+        case = study.case
+        names = [case.patient.full_name] if case.patient else []
         try:
-            result = stt.transcribe(abs_path)
+            result = stt.transcribe(abs_path, patient_names=names)
         except stt.STTUnavailable as exc:
             log.info("STT unavailable for study %s: %s", study.id, exc)
+            study.error = str(exc)[:500]
+        except Exception as exc:  # noqa: BLE001
+            log.exception("STT failed for study %s", study.id)
+            _record(db, study, "stt", model_version=settings.stt_provider, error=str(exc)[:500])
         else:
-            _record(db, study, "stt", output={"text": result.text, "language": result.language},
+            _record(db, study, "stt",
+                    output={"text": result.text, "language": result.language,
+                            "card": result.card, "name_redacted": result.redacted,
+                            "audio_seconds": result.audio_seconds},
                     confidence=result.confidence, model_version=result.model_version,
                     duration_ms=result.duration_ms)
             produced = True
-            case = study.case
-            if case.anamnesis is not None and not case.anamnesis.voice_transcript:
-                case.anamnesis.voice_transcript = result.text
+            from app.models import Anamnesis
+
+            if case.anamnesis is None:
+                case.anamnesis = Anamnesis(case_id=case.id)
+                db.add(case.anamnesis)
+            case.anamnesis.voice_transcript = result.text
+            structured = dict(case.anamnesis.structured_json or {})
+            # Informational only: the card's "onset" never moves the case's timer.
+            structured["voice_card"] = result.card
+            case.anamnesis.structured_json = structured
 
     return produced
 

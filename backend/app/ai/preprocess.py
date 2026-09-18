@@ -180,3 +180,63 @@ def as_png(path: Path, out_path: Path | None = None) -> Path:
             return path
         out_path = Path(tempfile.mkdtemp(prefix="nazar-img-")) / (path.stem + ".png")
     return _write_png(load_gray(path), out_path)
+
+
+# --- voice notes (TZ §7 M2) --------------------------------------------------
+
+AUDIO_RATE = 16000          # speech models work at 16 kHz mono
+MAX_VOICE_SECONDS = 120     # TZ §11: voice notes longer than this are refused
+
+
+def _decoded_frames(path: Path):
+    import av
+
+    resampler = av.AudioResampler(format="s16", layout="mono", rate=AUDIO_RATE)
+    with av.open(str(path)) as container:
+        if not container.streams.audio:
+            raise PreprocessError("Faylda ovoz yo'q")
+        for frame in container.decode(audio=0):
+            yield from resampler.resample(frame)
+    yield from resampler.resample(None)
+
+
+def audio_duration(path: Path) -> float:
+    """Seconds of audio, counted from decoded samples.
+
+    Browser MediaRecorder files often carry no duration in their header, so the
+    container's metadata cannot be trusted.
+    """
+    try:
+        samples = sum(frame.samples for frame in _decoded_frames(Path(path)))
+    except PreprocessError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - PyAV raises many types
+        raise PreprocessError(f"Ovoz fayli o'qilmadi: {exc}") from exc
+    return samples / AUDIO_RATE
+
+
+def voice_to_flac(path: Path, out_path: Path) -> float:
+    """Normalise any browser recording (webm/opus, mp4/aac, ogg, wav) to 16 kHz
+    mono FLAC, a format every speech model accepts. Returns the duration."""
+    import av
+
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    samples = 0
+    try:
+        with av.open(str(out_path), "w", format="flac") as output:
+            stream = output.add_stream("flac", rate=AUDIO_RATE)
+            stream.layout = "mono"
+            for frame in _decoded_frames(Path(path)):
+                samples += frame.samples
+                for packet in stream.encode(frame):
+                    output.mux(packet)
+            for packet in stream.encode(None):
+                output.mux(packet)
+    except PreprocessError:
+        raise
+    except Exception as exc:  # noqa: BLE001
+        raise PreprocessError(f"Ovoz fayli o'qilmadi: {exc}") from exc
+    if samples == 0:
+        raise PreprocessError("Ovoz yozuvi bo'sh")
+    return samples / AUDIO_RATE

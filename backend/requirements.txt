@@ -23,6 +23,9 @@ pillow>=10            # also used by pydicom to decode JPEG-compressed DICOM
 pylibjpeg>=2.0
 pylibjpeg-libjpeg>=2.1
 pylibjpeg-openjpeg>=2.1
+# Voice notes: decodes whatever the phone recorded (webm/opus, mp4/aac, ogg,
+# wav) and re-encodes 16 kHz mono FLAC; bundles its own FFmpeg libraries
+av>=12
 
 # AI: M4 chest X-ray reader (CPU is enough)
 # On x86_64 the default torch wheel bundles CUDA (~900 MB). For a CPU-only box use:

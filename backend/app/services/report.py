@@ -21,13 +21,11 @@ model numbers, built by `report_context` and nothing else.
 import json
 import logging
 import re
-import time
 from datetime import datetime, timezone
-
-import httpx
 
 from app import i18n
 from app.config import settings
+from app.services import gemini
 
 log = logging.getLogger(__name__)
 
@@ -36,7 +34,6 @@ MAX_OUTPUT_TOKENS = 1024
 LLM_TIMEOUT = 20.0
 
 DEFAULT_MODELS = {"anthropic": "claude-opus-5", "gemini": "gemini-2.5-flash"}
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 SYSTEM_PROMPT = """Sen qishloq tibbiy triyaj tizimining hisobot yozuvchisisan.
 Senga triyaj natijasi JSON holida beriladi. Vazifang faqat shu natijani sodda tilda qayta aytish.
@@ -78,8 +75,7 @@ class ReportRejected(ValueError):
     """The model answered, but the draft broke one of the rules above."""
 
 
-class RateLimited(RuntimeError):
-    """The provider said "too many requests" (HTTP 429): try again later, not now."""
+RateLimited = gemini.RateLimited   # the worker retries later on this one
 
 
 # --- context -----------------------------------------------------------------
@@ -217,8 +213,7 @@ def _parse(text: str) -> dict:
 def model_names() -> list[str]:
     """LLM_MODEL may list several models, comma separated. Free-tier quotas are
     per model, so when one answers 429 the next one is tried."""
-    configured = [name.strip() for name in settings.llm_model.split(",") if name.strip()]
-    return configured or [DEFAULT_MODELS.get(settings.llm_provider, "")]
+    return gemini.split_models(settings.llm_model, DEFAULT_MODELS.get(settings.llm_provider, ""))
 
 
 def model_name() -> str:
@@ -267,40 +262,6 @@ def _anthropic_draft(context: dict) -> tuple[str, str]:
     return "".join(block.text for block in response.content if block.type == "text"), model_name()
 
 
-def _gemini_call(model: str, body: dict) -> str:
-    """One model: returns the text, raises RateLimited on 429, RuntimeError otherwise."""
-    # The key travels in a header, never in the URL, so it cannot leak into logs.
-    headers = {"x-goog-api-key": settings.llm_api_key}
-    url = GEMINI_URL.format(model=model)
-
-    last_error: Exception | None = None
-    for attempt in range(2):  # one retry for 5xx: the free tier answers 503 under load
-        try:
-            response = httpx.post(url, json=body, headers=headers, timeout=LLM_TIMEOUT)
-        except httpx.HTTPError as exc:
-            last_error = exc
-        else:
-            if response.status_code == 200:
-                data = response.json()
-                candidates = data.get("candidates") or []
-                if not candidates:
-                    raise ReportRejected(f"javob yo'q: {data.get('promptFeedback')}")
-                candidate = candidates[0]
-                if candidate.get("finishReason") not in ("STOP", None):
-                    raise ReportRejected(f"javob to'liq emas: {candidate.get('finishReason')}")
-                parts = (candidate.get("content") or {}).get("parts") or []
-                return "".join(part.get("text", "") for part in parts)
-            if response.status_code == 429:
-                # Free tier quotas are per minute or per day: retrying now cannot help.
-                raise RateLimited(f"{model}: HTTP 429")
-            last_error = RuntimeError(f"{model}: HTTP {response.status_code}")
-            if response.status_code not in (500, 502, 503, 504):
-                break
-        if attempt == 0:
-            time.sleep(1.5)
-    raise RuntimeError(f"Gemini javob bermadi: {last_error}")
-
-
 def _gemini_draft(context: dict) -> tuple[str, str]:
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
@@ -314,13 +275,11 @@ def _gemini_draft(context: dict) -> tuple[str, str]:
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
-    limited: list[str] = []
-    for model in model_names():
-        try:
-            return _gemini_call(model, body), model
-        except RateLimited as exc:
-            limited.append(str(exc))
-    raise RateLimited("; ".join(limited))
+    try:
+        return gemini.generate(model_names(), body, key=settings.llm_api_key,
+                               timeout=LLM_TIMEOUT)
+    except gemini.Rejected as exc:
+        raise ReportRejected(str(exc)) from exc
 
 
 _PROVIDERS = {"anthropic": _anthropic_draft, "gemini": _gemini_draft}

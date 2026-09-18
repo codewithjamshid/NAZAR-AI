@@ -31,7 +31,9 @@ def gemini(monkeypatch):
     monkeypatch.setattr(settings, "llm_provider", "gemini")
     monkeypatch.setattr(settings, "llm_api_key", "test-key")
     monkeypatch.setattr(settings, "llm_model", "gemini-2.5-flash")
-    monkeypatch.setattr(report.time, "sleep", lambda *_: None)
+    from app.services import gemini as gemini_client
+
+    monkeypatch.setattr(gemini_client.time, "sleep", lambda *_: None)
 
 
 def scripted(monkeypatch, responses):

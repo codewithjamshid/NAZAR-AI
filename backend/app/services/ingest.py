@@ -140,6 +140,22 @@ def _anonymise_dicom_zip(rel_path: str) -> int:
     return count
 
 
+def _check_voice(rel_path: str) -> None:
+    """TZ §11: a voice note must decode and last at most 120 seconds."""
+    from app.ai import preprocess  # local import: preprocess imports this module
+
+    try:
+        seconds = preprocess.audio_duration(storage.absolute(rel_path))
+    except preprocess.PreprocessError as exc:
+        raise IngestError(str(exc)) from exc
+    if seconds < 0.5:
+        raise IngestError("Ovoz yozuvi juda qisqa")
+    if seconds > preprocess.MAX_VOICE_SECONDS:
+        raise IngestError(
+            f"Ovoz yozuvi {seconds:.0f} soniya — {preprocess.MAX_VOICE_SECONDS} soniyadan oshmasin"
+        )
+
+
 def store_upload(stream: BinaryIO, case_id: int, study_type: str) -> StoredFile:
     """Stream an upload to storage, validate it, anonymise DICOM. Raises IngestError."""
     if study_type not in MAX_BYTES:
@@ -165,6 +181,8 @@ def store_upload(stream: BinaryIO, case_id: int, study_type: str) -> StoredFile:
             _anonymise_dicom_file(rel_path)
         elif fmt == "zip":
             _anonymise_dicom_zip(rel_path)
+        elif study_type == StudyType.VOICE:
+            _check_voice(rel_path)
     except IngestError:
         storage.delete(rel_path)
         raise

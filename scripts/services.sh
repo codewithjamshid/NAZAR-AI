@@ -47,9 +47,11 @@ start_postgres() {
   "$PG_BIN/psql" -h 127.0.0.1 -p "$PGPORT" -U "$USER" -d postgres -qtAc \
     "DO \$\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='nazar')
      THEN CREATE ROLE nazar LOGIN PASSWORD 'nazar'; END IF; END \$\$;" >/dev/null
-  "$PG_BIN/psql" -h 127.0.0.1 -p "$PGPORT" -U "$USER" -d postgres -qtAc \
-    "SELECT 1 FROM pg_database WHERE datname='nazar'" | grep -q 1 \
-    || "$PG_BIN/createdb" -h 127.0.0.1 -p "$PGPORT" -U "$USER" -O nazar nazar
+  for database in nazar nazar_test; do   # nazar_test keeps pytest off the demo data
+    "$PG_BIN/psql" -h 127.0.0.1 -p "$PGPORT" -U "$USER" -d postgres -qtAc \
+      "SELECT 1 FROM pg_database WHERE datname='$database'" | grep -q 1 \
+      || "$PG_BIN/createdb" -h 127.0.0.1 -p "$PGPORT" -U "$USER" -O nazar "$database"
+  done
   echo "postgres: started on port $PGPORT"
 }
 
