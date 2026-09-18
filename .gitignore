@@ -32,3 +32,6 @@ minio-data/
 .DS_Store
 .idea/
 .vscode/
+
+# local process logs
+.logs/

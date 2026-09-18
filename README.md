@@ -1,64 +1,90 @@
 # NAZAR AI
 
-Rural nurse uploads a CT / chest X-ray / lab photo / voice note → AI reads it first →
-triage zone (red / yellow / green) + specialist routing → a regional specialist confirms.
+Har bir qishloqqa — mutaxassis nazari.
 
-Hackathon MVP. Full specification: `docs/TZ.md` (source: the TZ .docx in this repo).
-AI is the first reader, never the last — no case closes without a specialist decision.
+A rural nurse uploads a CT, a chest X-ray, a lab-sheet photo or a voice note.
+The AI reads it **first, never last**: it produces a triage zone (red / yellow /
+green), routes the case to the right specialist, and a regional specialist
+confirms every case in the panel. No case closes without a human decision.
 
-## Running it locally (no Docker)
+Hackathon MVP for the National AI Hackathon, Khorezm, 17–20 September 2026
+(healthcare track, problem #13). Full specification: [docs/TZ.md](docs/TZ.md).
 
-Requirements: macOS with Xcode command line tools, Postgres.app (or any PostgreSQL 16+),
-Python 3.11, Node 20+.
+## What is built
+
+| Part | State |
+|---|---|
+| Triage engine (M6) | Rules in [rules/triage.yaml](rules/triage.yaml), owned by the neurosurgeon; 30 tests |
+| Chest X-ray reader (M4) | torchxrayvision DenseNet121, 18 pathologies, Grad-CAM heatmap, ~2 s |
+| Head CT (M3) | DICOM series, brain window, slice viewer; MedGemma reads it, ICH CNN is the optional second reader |
+| Report (M7) | Uzbek template always; Claude API when `LLM_API_KEY` is set, rejected if it invents a diagnosis |
+| Lab OCR (M5), voice (M2) | MedGemma / faster-whisper, both with their documented fallbacks |
+| API | 21 endpoints + `WS /ws/queue`, JWT, per-facility visibility, signed image URLs, audit log |
+| Nurse PWA | `nurse-app/` — screens N1–N6, offline queue |
+| Specialist panel | `specialist-panel/` — screens P1–P4, real-time queue, viewer, decisions |
+
+## Run it (no Docker)
+
+Requirements: macOS with Xcode command line tools, PostgreSQL 16+ (Postgres.app
+works), Python 3.11, Node 20+.
 
 ```bash
-# 1. one-off: Python 3.11 venv + dependencies
+# one-off
 pip install uv && uv python install 3.11
-cd backend && uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt
-
-# 2. one-off: redis-server into ~/.local/bin
+cd backend && uv venv --python 3.11 .venv && uv pip install --python .venv/bin/python -r requirements.txt && cd ..
 ./scripts/install-redis.sh
+cp .env.example .env        # set JWT_SECRET, and MEDGEMMA_URL when the GPU box is up
+(cd nurse-app && npm install) && (cd specialist-panel && npm install)
 
-# 3. every session
-cp .env.example .env          # then set JWT_SECRET and MEDGEMMA_URL
-./scripts/services.sh start   # PostgreSQL + Redis
-cd backend && .venv/bin/python -m app.seed
+# every session
+./scripts/dev.sh start
+cd backend && .venv/bin/python -m app.seed --cases
 ```
 
-Two terminals:
+| Service | URL |
+|---|---|
+| API docs | http://localhost:8000/docs |
+| Nurse app | http://localhost:5173 |
+| Specialist panel | http://localhost:5174 |
 
-```bash
-cd backend && .venv/bin/uvicorn app.main:app --reload
-```
+Stop everything with `./scripts/dev.sh stop`; logs are in `.logs/`.
 
-```bash
-cd backend && .venv/bin/celery -A app.workers.tasks worker -l info
-```
+Demo accounts (password `demo1234`): nurse `+998901000001`, district operator
+`+998901000003`, neurologist `+998901000004`.
 
-Check it: `curl -s localhost:8000/health` → `{"status":"ok",...}`,
-API docs at <http://localhost:8000/docs>.
-
-MedGemma is **not** started here. It runs on a separate GPU machine, is published with
-ngrok, and the backend reaches it through `MEDGEMMA_URL` in `.env`. Until that box is up,
-`MEDGEMMA_STUB=true` serves cached JSON from `demo-data/`.
-
-`docker-compose.yml` is kept for the GPU machine and for teammates who prefer containers;
-it is not needed for local development.
+MedGemma runs on a **separate GPU machine** and is reached over its ngrok URL —
+see [medgemma-service/README.md](medgemma-service/README.md). Until it is up,
+`MEDGEMMA_STUB=true` serves recorded readings and labels them `@stub`; a missing
+recording means "this reader was absent", which the rules treat as a reason to
+stay yellow rather than as a silent pass.
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `backend/app/models/` | SQLAlchemy tables (TZ §9) |
-| `backend/app/routers/` | auth, patients, cases, studies |
-| `backend/app/services/` | auth, storage, ingest (DICOM anonymisation), audit |
-| `backend/app/ai/` | `cxr.py` (torchxrayvision + Grad-CAM), `preprocess.py` |
-| `rules/triage.yaml` | clinical triage rules, owned by the neurosurgeon |
-| `demo-data/` | demo facilities, users, sample chest X-rays |
-| `scripts/` | local service management |
+| `rules/triage.yaml` | Clinical thresholds and routing. The neurosurgeon edits this, not the code |
+| `backend/app/ai/` | `cxr.py`, `medgemma.py`, `ich.py`, `stt.py`, `preprocess.py`, `prompts/` |
+| `backend/app/services/` | `triage.py`, `report.py`, `ingest.py` (DICOM anonymisation), `storage.py`, `files.py`, `events.py` |
+| `backend/app/routers/` | auth, patients, cases, anamnesis, studies, queue, decisions, facilities, stats, files, ws |
+| `medgemma-service/` | MedGemma 1.5 HTTP service for the GPU machine |
+| `demo-data/` | Facilities, users, five demo cases, open chest X-rays and one head CT |
+| `docs/` | [TZ.md](docs/TZ.md) spec, [API.md](docs/API.md) contract, [DEMO.md](docs/DEMO.md) runbook |
 
 ## Tests
 
 ```bash
 cd backend && .venv/bin/python -m pytest -q
 ```
+
+64 tests: the triage rules, the AI pipeline from upload to zone, DICOM
+anonymisation, signed URLs, role visibility and the demo path.
+
+## Safety rules that the code enforces
+
+- AI is the first reader. Every result carries "Dastlabki tahlil. Shifokor
+  tasdig'i talab qilinadi." and no case closes without a specialist decision.
+- Zones come from classifiers plus `rules/triage.yaml`, never from free LLM text.
+- Missing data, a failed module or two readers that disagree → yellow, never green.
+- Every AI result stores its confidence, `model_version` and heatmap path; every
+  specialist action lands in `audit_log`.
+- Patient names never reach the cloud model; DICOM metadata is anonymised on ingest.
