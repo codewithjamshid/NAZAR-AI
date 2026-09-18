@@ -102,3 +102,28 @@ def test_unreadable_file_is_recorded_as_a_failure(db, case_with_cxr, storage_dir
     assert result.zone == "yellow"          # never green on a failure
     assert "ai_failed" in result.signals_json
     assert case.status == m.CaseStatus.AI_FAILED
+
+
+def test_the_patient_name_never_reaches_the_report_generator(db, case_with_cxr, monkeypatch):
+    """TZ §11: only numbers and findings leave the building, never an identity."""
+    import json
+
+    from app.services import report
+
+    case, study = case_with_cxr
+    case.patient.full_name = "Bekmurod Ismoilov"
+    case.patient.phone = "+998911112233"
+    captured: dict = {}
+
+    def spy(context):
+        captured.update(context)
+        return report.template_report(context)
+
+    monkeypatch.setattr(report, "generate", spy)
+    tasks._process(db, study)
+    triage_case(db, case)
+
+    payload = json.dumps(captured, ensure_ascii=False, default=str)
+    assert "Bekmurod" not in payload and "+998911112233" not in payload
+    assert captured["patient_age"] == 46          # age is fine, identity is not
+    assert captured["zone"] and captured["reasons"]
