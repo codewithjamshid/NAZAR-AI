@@ -21,7 +21,9 @@ start_one() {
     return
   fi
   mkdir -p "$PIDS"
-  ( cd "$dir" && nohup "$@" > "$LOGS/$name.log" 2>&1 & echo $! > "$PIDS/$name" )
+  # Redirect the subshell's own descriptors before starting the service, so no
+  # child keeps our caller's stdout open (otherwise `dev.sh start | tail` hangs).
+  ( cd "$dir" && exec 0</dev/null 1>>"$LOGS/$name.log" 2>&1; "$@" & echo $! > "$PIDS/$name" )
   sleep 1
   echo "$name: started (log: .logs/$name.log)"
 }
