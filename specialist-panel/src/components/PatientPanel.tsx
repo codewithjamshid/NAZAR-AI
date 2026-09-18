@@ -1,5 +1,6 @@
 // P2 left column: patient, anamnesis, BE-FAST with its score, red flags and labs.
 
+import { fileUrl } from "../api/client";
 import type { CaseDetail } from "../api/types";
 import { dateTime, num } from "../lib/format";
 import { BEFAST_UZ, FLAG_UZ, SEX_UZ } from "../lib/labels";
@@ -85,6 +86,8 @@ export function PatientPanel({ detail }: { detail: CaseDetail }) {
             {anamnesis.voice_transcript}
           </div>
         ) : null}
+        {anamnesis?.voice_card ? <VoiceCardView card={anamnesis.voice_card} /> : null}
+        <VoiceRecordings studies={detail.studies} />
       </Section>
 
       <Section title="BE-FAST">
@@ -198,6 +201,56 @@ export function PatientPanel({ detail }: { detail: CaseDetail }) {
           <p className="text-sm text-slate-500">Tahlil qiymatlari yo'q.</p>
         )}
       </Section>
+    </div>
+  );
+}
+
+function VoiceCardView({ card }: { card: import("../api/types").VoiceCard }) {
+  const rows: Array<[string, string | null]> = [
+    ["Asosiy shikoyat", card.chief_complaint],
+    ["Boshlanishi (aytilgan)", card.onset],
+    ["Qo'shimcha kasalliklar", card.comorbidities.length ? card.comorbidities.join(", ") : null],
+    ["Dorilar", card.medications.length ? card.medications.join(", ") : null],
+  ];
+  const filled = rows.filter(([, value]) => value);
+  if (!filled.length) return null;
+  return (
+    <div className="mt-2 rounded border border-slate-200 px-2 py-1.5">
+      <p className="text-xs font-semibold text-slate-500">
+        Ovozli karta (AI o'qidi, hamshira tekshirmagan)
+      </p>
+      <dl className="mt-1 space-y-0.5 text-sm">
+        {filled.map(([label, value]) => (
+          <div key={label} className="flex gap-2">
+            <dt className="w-40 shrink-0 text-slate-500">{label}</dt>
+            <dd className="text-slate-900">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {card.onset ? (
+        <p className="mt-1 text-xs text-slate-500">
+          Taymer hamshira kiritgan simptom vaqtidan hisoblanadi, bu yozuvdan emas.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+/** The original recordings, so the specialist can check the transcript by ear. */
+function VoiceRecordings({ studies }: { studies: import("../api/types").Study[] }) {
+  const notes = studies.filter((study) => study.type === "voice" && study.images?.base?.[0]);
+  if (!notes.length) return null;
+  return (
+    <div className="mt-2 space-y-1">
+      {notes.map((study) => {
+        const src = fileUrl(study.images.base[0]);
+        return src ? (
+          <div key={study.id}>
+            <p className="text-xs font-semibold text-slate-500">Asl ovoz yozuvi</p>
+            <audio controls preload="none" src={src} className="mt-0.5 w-full" />
+          </div>
+        ) : null;
+      })}
     </div>
   );
 }

@@ -124,6 +124,8 @@ export interface Anamnesis {
   labs: Record<string, number> | null;
   chief_complaint: string | null;
   voice_transcript: string | null;
+  /** Structured card read from the voice note by the STT model. Informational. */
+  voice_card?: VoiceCard | null;
 }
 
 export interface Facility {
@@ -199,4 +201,12 @@ export interface QueueEvent {
   specialist_type?: string | null;
   facility_id?: number | null;
   district?: string | null;
+}
+
+export interface VoiceCard {
+  chief_complaint: string | null;
+  /** What the nurse said about timing. Text only: it never sets the timer. */
+  onset: string | null;
+  comorbidities: string[];
+  medications: string[];
 }

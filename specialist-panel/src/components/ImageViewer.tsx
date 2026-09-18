@@ -13,7 +13,8 @@ const MAX_ZOOM = 5;
 
 export function ImageViewer({ studies }: { studies: Study[] }) {
   const viewable = useMemo(
-    () => studies.filter((study) => (study.images?.base ?? []).length > 0),
+    // Voice notes are played in the patient column, not drawn as images.
+    () => studies.filter((study) => study.type !== "voice" && (study.images?.base ?? []).length > 0),
     [studies],
   );
   const [studyIndex, setStudyIndex] = useState(0);
