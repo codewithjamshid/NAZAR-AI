@@ -154,10 +154,18 @@ def _from_cache(task: str, key: str) -> MedGemmaResult:
     )
 
 
+def service_headers() -> dict[str, str]:
+    """Headers for every request to the GPU box behind MEDGEMMA_URL."""
+    headers = {"ngrok-skip-browser-warning": "true"}  # ngrok free tier interstitial
+    if settings.medgemma_api_key:
+        headers["X-API-Key"] = settings.medgemma_api_key
+    return headers
+
+
 def _call_service(task: str, images: list[Path], prompt: str) -> tuple[str, str, int]:
     url = settings.medgemma_url.rstrip("/") + "/infer"
     payload = {"task": task, "prompt": prompt, "images": _encode(images)}
-    headers = {"ngrok-skip-browser-warning": "true"}  # ngrok free tier interstitial
+    headers = service_headers()
     try:
         response = httpx.post(url, json=payload, headers=headers, timeout=TIMEOUTS[task])
         response.raise_for_status()

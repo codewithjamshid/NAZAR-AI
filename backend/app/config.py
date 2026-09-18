@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     llm_model: str = ""   # empty -> provider default (see services/report.py DEFAULT_MODELS)
 
     medgemma_url: str = "http://localhost:8001"
+    medgemma_api_key: str = ""        # sent as X-API-Key to the GPU box, if set
     medgemma_model: str = "google/medgemma-1.5-4b-it"
     medgemma_stub: bool = True
     medgemma_ct_slices: int = 16      # slices sent to MedGemma (TZ §15 R4: 16-24)

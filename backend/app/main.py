@@ -85,19 +85,32 @@ def health() -> dict:
 
 
 def _medgemma_status() -> str:
-    """Reachability of the GPU box behind MEDGEMMA_URL (the ngrok link)."""
+    """Reachability of the GPU box behind MEDGEMMA_URL (the ngrok link).
+
+    Tries /health (our medgemma-service) and /healthz (other MedGemma servers),
+    with the X-API-Key header when one is configured. Never sends images.
+    """
     if settings.medgemma_stub:
         return "stub"
     import httpx
 
-    try:
-        response = httpx.get(
-            settings.medgemma_url.rstrip("/") + "/health",
-            headers={"ngrok-skip-browser-warning": "true"},
-            timeout=4.0,
-        )
-        response.raise_for_status()
-        body = response.json()
-        return f"ok ({body.get('device', '?')}, loaded={body.get('loaded')})"
-    except Exception as exc:  # noqa: BLE001
-        return f"unreachable: {type(exc).__name__}"
+    from app.ai.medgemma import service_headers
+
+    base = settings.medgemma_url.rstrip("/")
+    last = "no answer"
+    for path in ("/health", "/healthz"):
+        try:
+            response = httpx.get(base + path, headers=service_headers(), timeout=4.0)
+        except Exception as exc:  # noqa: BLE001
+            return f"unreachable: {type(exc).__name__}"
+        if response.status_code == 200:
+            try:
+                body = response.json()
+            except ValueError:
+                body = {}
+            detail = body.get("device") or body.get("status") or "ok"
+            return f"ok ({path}: {detail}, loaded={body.get('loaded', '?')})"
+        last = f"{path} HTTP {response.status_code}"
+        if response.status_code in (401, 403):
+            return f"rejected: {last} — MEDGEMMA_API_KEY?"
+    return f"unreachable: {last}"

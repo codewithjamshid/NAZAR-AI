@@ -19,7 +19,7 @@ import time
 from typing import Literal
 
 import torch
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from PIL import Image
 from pydantic import BaseModel, Field
 
@@ -29,6 +29,7 @@ log = logging.getLogger("medgemma")
 MODEL_ID = os.environ.get("MEDGEMMA_MODEL", "google/medgemma-1.5-4b-it")
 MAX_NEW_TOKENS = int(os.environ.get("MEDGEMMA_MAX_NEW_TOKENS", "512"))
 MAX_IMAGES = int(os.environ.get("MEDGEMMA_MAX_IMAGES", "24"))
+API_KEY = os.environ.get("MEDGEMMA_API_KEY", "")   # set it when the box is on ngrok
 
 SYSTEM_PROMPT = (
     "You are an expert radiologist supporting a rural triage system. "
@@ -40,6 +41,12 @@ _model = None
 _processor = None
 
 app = FastAPI(title="MedGemma service", version="0.1.0")
+
+
+def require_key(x_api_key: str | None = Header(default=None)) -> None:
+    """An ngrok URL is public: without a key anyone could run the GPU."""
+    if API_KEY and x_api_key != API_KEY:
+        raise HTTPException(401, detail="API kalit noto'g'ri yoki yo'q")
 
 
 class InferRequest(BaseModel):
@@ -111,7 +118,7 @@ def health() -> dict:
     }
 
 
-@app.post("/infer", response_model=InferResponse)
+@app.post("/infer", response_model=InferResponse, dependencies=[Depends(require_key)])
 def infer(request: InferRequest) -> InferResponse:
     started = time.monotonic()
     try:

@@ -13,6 +13,7 @@ pip install -r requirements.txt
 
 # The weights are gated: accept the licence on the model page first.
 export HF_TOKEN=hf_...
+export MEDGEMMA_API_KEY=$(python -c "import secrets; print(secrets.token_hex(32))")
 uvicorn app:app --host 0.0.0.0 --port 8001
 ```
 
@@ -29,6 +30,7 @@ Then on the backend machine set, in `.env`:
 
 ```
 MEDGEMMA_URL=https://<your-subdomain>.ngrok-free.app
+MEDGEMMA_API_KEY=<the same key as on the GPU box>
 MEDGEMMA_STUB=false
 ```
 

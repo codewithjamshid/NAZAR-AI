@@ -147,3 +147,27 @@ def test_prompts_exist_for_every_task():
     for task in ("ct_head", "cxr", "lab"):
         text = medgemma.prompt_for(task)
         assert "JSON" in text and len(text) > 200
+
+
+def test_the_api_key_goes_in_a_header_to_the_gpu_box(monkeypatch, tmp_path):
+    monkeypatch.setattr(settings, "medgemma_stub", False)
+    monkeypatch.setattr(settings, "medgemma_api_key", "gpu-key")
+    seen = {}
+
+    def post(url, json=None, headers=None, timeout=None):
+        seen.update(url=url, headers=headers)
+        return httpx.Response(200, json={"text": '{"hemorrhage": "no", "confidence": "high"}'},
+                              request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx, "post", post)
+    image = tmp_path / "s.png"
+    image.write_bytes(b"\x89PNG\r\n\x1a\n")
+    medgemma.infer("ct_head", [image], "k")
+
+    assert seen["headers"]["X-API-Key"] == "gpu-key"
+    assert "gpu-key" not in seen["url"]
+
+
+def test_no_key_header_when_none_is_configured(monkeypatch):
+    monkeypatch.setattr(settings, "medgemma_api_key", "")
+    assert "X-API-Key" not in medgemma.service_headers()
