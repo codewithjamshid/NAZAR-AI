@@ -47,7 +47,7 @@ tuman operatori `+998901000003`. Parol hammasiga `demo1234`.
 | Vaqt | Ekran | Harakat | Hakam ko'radigan narsa |
 |---|---|---|---|
 | 0:00 | Telefon | "+ Yangi holat": ism, 1968, erkak, simptom vaqti "1 soat oldin" | 30 soniyada holat ochildi |
-| 0:30 | Telefon | Anamnez: shikoyatni yozish yoki mikrofon | O'zbek matn |
+| 0:30 | Telefon | Anamnez: "Ovoz bilan aytish" → "O'ng qo'li ishlamayapti, gapirolmayapti, ertalab boshlandi" → to'xtatish. Bemor ismini aytmang | ~4 soniyada o'zbekcha matn va karta: shikoyat, kasalliklar, dorilar |
 | 0:50 | Telefon | "Insult shubhasi?" → BE-FAST: yuz, qo'l, nutq → ha | Ekranda ball va "INSULT SHUBHASI" |
 | 1:00 | Telefon | Natija ekrani | QIZIL, taymer ~230 daqiqa, eng yaqin KT masofasi, "nevrolog xabardor" |
 | 1:10 | Panel | Navbat o'zi yangilanadi | Qizil qator tepada, ovoz signali, taymer |
@@ -76,6 +76,16 @@ yoqib/o'chirish → SARIQ zona.
 - **"Bemor ismi bulutga ketadimi?"** Yo'q. Hisobot generatoriga faqat zona,
   sabablar va raqamlar yuboriladi; DICOM metama'lumoti yuklashda tozalanadi.
 
+## Ovoz haqida bilish kerak
+
+- Ovoz Gemini ga yuboriladi (`STT_PROVIDER=gemini`). Bemor ismi aytilsa ham
+  matndan o'chiriladi, lekin yozuvning o'zi bulutga chiqqan bo'ladi. Pilot uchun
+  `STT_PROVIDER=whisper` — mahalliy, hech narsa chiqmaydi.
+- Ovozdan chiqqan "boshlanish vaqti" faqat matn. Taymer hamshira N3 da kiritgan
+  vaqtdan hisoblanadi, noto'g'ri eshitilgan so'z taymerni surmaydi.
+- Mutaxassis panelida asl yozuvni tinglash mumkin.
+- 120 soniyadan uzun yozuv yuklashda rad etiladi.
+
 ## Nosozlik bo'lsa
 
 | Belgi | Nima qilish |
@@ -84,3 +94,4 @@ yoqib/o'chirish → SARIQ zona.
 | Rasm ochilmaydi | Imzolangan havola muddati 1 soat — sahifani yangilang |
 | AI natija kelmaydi | `.logs/worker.log` ga qarang; worker to'xtagan bo'lsa `scripts/dev.sh start` |
 | MedGemma javob bermaydi | `.env` da `MEDGEMMA_STUB=true` qilib qo'ying: tizim CNN va qoidalar bilan ishlayveradi |
+| Ovoz matnga aylanmaydi | Gemini kunlik limiti tugagan bo'lishi mumkin (`.logs/worker.log` da 429). Hamshira matn maydoniga yozadi |
