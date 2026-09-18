@@ -22,6 +22,7 @@ export function CaseViewPage() {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recomputing, setRecomputing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -35,6 +36,19 @@ export function CaseViewPage() {
       setLoading(false);
     }
   }, [id]);
+
+  const recompute = useCallback(async () => {
+    setRecomputing(true);
+    try {
+      setDetail(await api.recomputeTriage(id));
+      setError(null);
+      void refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Qayta hisoblashda xato");
+    } finally {
+      setRecomputing(false);
+    }
+  }, [id, refresh]);
 
   useEffect(() => {
     if (!Number.isFinite(id)) return;
@@ -94,8 +108,17 @@ export function CaseViewPage() {
         </span>
         <button
           type="button"
+          onClick={() => void recompute()}
+          disabled={recomputing}
+          title="rules/triage.yaml o'zgargan bo'lsa zonani qayta hisoblaydi"
+          className="ml-auto rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
+        >
+          {recomputing ? "Hisoblanmoqda..." : "Qoidalar bo'yicha qayta hisoblash"}
+        </button>
+        <button
+          type="button"
           onClick={() => void load()}
-          className="ml-auto rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
+          className="rounded border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50"
         >
           Yangilash
         </button>

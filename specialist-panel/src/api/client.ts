@@ -104,6 +104,11 @@ export const api = {
     return request<CaseDetail>("/cases/" + id);
   },
 
+  /** Re-run the rules after the neurosurgeon edited rules/triage.yaml. */
+  recomputeTriage(id: number): Promise<CaseDetail> {
+    return request<CaseDetail>("/cases/" + id + "/triage", { method: "POST" });
+  },
+
   openCase(id: number): Promise<unknown> {
     return request<unknown>("/cases/" + id + "/open", { method: "POST" });
   },
