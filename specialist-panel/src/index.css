@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-slate-100 text-slate-900 antialiased;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Red rows keep pulsing until a decision exists (TZ §12). */
+.row-pulse {
+  animation: row-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes row-pulse {
+  0%, 100% { background-color: rgba(220, 38, 38, 0.08); }
+  50% { background-color: rgba(220, 38, 38, 0.26); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-pulse { animation: none; background-color: rgba(220, 38, 38, 0.14); }
+}
