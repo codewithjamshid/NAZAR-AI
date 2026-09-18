@@ -60,8 +60,10 @@ yoqib/o'chirish → SARIQ zona.
 - **"Model ishlamasa?"** Demo holat #1 aynan shunday: KT yuklangan, MedGemma
   stub rejimida o'qimagan. Holat yo'qolmaydi — "KT yuklandi, AI o'qimadi"
   sababi bilan nevrolog navbatiga tushadi va qizil bo'lib qoladi.
-- **"Qoidalar qayerda?"** `rules/triage.yaml`. Uni tahrirlab, panelda
-  "Qayta hisoblash" bosilsa zona yangi qoidalar bo'yicha qayta chiqadi.
+- **"Qoidalar qayerda?"** `rules/triage.yaml`. Faylni tahrirlang (masalan
+  `cxr.finding_min` ni 0,6 ga), keyin panelda holatni ochib "Qoidalar bo'yicha
+  qayta hisoblash" tugmasini bosing. Server faylni qaytadan o'qiydi, zona va
+  "Qoidalar versiyasi" yangilanadi — serverni qayta ishga tushirish shart emas.
 - **"Bemor ismi bulutga ketadimi?"** Yo'q. Hisobot generatoriga faqat zona,
   sabablar va raqamlar yuboriladi; DICOM metama'lumoti yuklashda tozalanadi.
 
