@@ -76,8 +76,10 @@ stay yellow rather than as a silent pass.
 cd backend && .venv/bin/python -m pytest -q
 ```
 
-64 tests: the triage rules, the AI pipeline from upload to zone, DICOM
-anonymisation, signed URLs, role visibility and the demo path.
+75 tests: the triage rules, the AI pipeline from upload to zone, DICOM
+anonymisation, MedGemma's retry contract, signed URLs, role visibility and the
+demo path. Against a running stack, `scripts/smoke.py` checks the same journey
+end to end including the worker and the WebSocket.
 
 ## Safety rules that the code enforces
 

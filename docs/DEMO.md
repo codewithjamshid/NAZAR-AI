@@ -19,7 +19,14 @@ Tekshiruv:
 curl -s localhost:8000/health
 ```
 
-`status: ok` bo'lishi kerak. `medgemma_stub: true` — MedGemma GPU mashinada
+`status: ok` bo'lishi kerak. Butun oqimni bir buyruq bilan tekshirish:
+
+```bash
+backend/.venv/bin/python scripts/smoke.py
+```
+
+14 ta tekshiruv: kirish, BE-FAST qizil zonasi, taymer, yuklash, worker, heatmap,
+imzolangan havola, navbat tartibi, qaror, yopish taqiqi va jonli hodisalar. `medgemma_stub: true` — MedGemma GPU mashinada
 ishlamayapti degani; ulangan bo'lsa `.env` da `MEDGEMMA_STUB=false` va
 `MEDGEMMA_URL` ngrok manzili turadi.
 
