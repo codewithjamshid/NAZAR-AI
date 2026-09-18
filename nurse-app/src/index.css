@@ -1,0 +1,50 @@
+@import 'tailwindcss';
+
+/* Nurse app design rules (TZ §12): body text never below 16px, buttons never
+   below 48px, one primary action per screen, high contrast for daylight use. */
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.45;
+  background-color: #f1f5f9;
+  color: #0f172a;
+  font-family: var(--font-sans);
+  overscroll-behavior-y: contain;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+  font-size: 17px;
+}
+
+/* iOS zooms on focus for anything under 16px; keep inputs at 17px. */
+input,
+select,
+textarea {
+  min-height: 52px;
+}
+
+textarea {
+  min-height: 96px;
+}
+
+@keyframes nazar-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.nazar-pulse {
+  animation: nazar-pulse 1.4s ease-in-out infinite;
+}
