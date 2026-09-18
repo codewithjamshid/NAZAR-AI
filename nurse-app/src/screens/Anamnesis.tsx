@@ -7,8 +7,14 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { NetworkError, api } from '../api/client'
 import type { AnamnesisPayload, Befast, BefastKey, FlagKey, Meta, Study } from '../api/types'
 import { BEFAST_KEYS, FLAG_KEYS } from '../api/types'
+import {
+  Activity, ArrowRight, Brain, ChevronRight, CloudOff, MessageSquareText, Mic, ShieldAlert, Square, TriangleAlert,
+} from 'lucide-react'
 import { BefastIcon } from '../components/BefastIcon'
-import { Button, Card, Disclaimer, ErrorBanner, InfoBanner, PendingBadge, Screen } from '../components/ui'
+import {
+  Button, Card, CardTitle, ChoiceButton, Disclaimer, ErrorBanner, FOOTER_ACTION, InfoBanner, Notice, PendingBadge,
+  Screen, Spinner, TextArea,
+} from '../components/ui'
 import { db, enqueue, isLocalId, savePendingAnamnesis } from '../offline/db'
 import { flush } from '../offline/sync'
 import { BEFAST_QUESTIONS, FLAG_LABEL } from '../lib/labels'
@@ -228,180 +234,232 @@ export function AnamnesisScreen() {
 
   useEffect(() => () => recorderRef.current?.stream?.getTracks().forEach((t) => t.stop()), [])
 
+  const answered = BEFAST_KEYS.filter((key) => befast[key]).length
+  const thresholdText =
+    (meta
+      ? `Chegara: ${meta.befast.stroke_min_score} ball yoki F/A/S dan bittasi · qoidalar ${meta.rules_version}`
+      : 'Chegaralar serverdan olinmadi') + (answered > 0 ? ` · ${answered} ta belgi` : '')
+
   return (
     <Screen
       title="Anamnez"
       subtitle={local ? 'Oflayn holat' : `Holat #${caseId}`}
       back={`/case/${caseId}`}
       footer={
-        <Button onClick={() => void save()} disabled={busy}>
+        <Button onClick={() => void save()} disabled={busy} className={FOOTER_ACTION}>
+          {busy ? <Spinner /> : null}
           {busy ? 'Saqlanmoqda…' : 'Saqlash va davom etish'}
+          {!busy ? <ArrowRight className="h-5 w-5" aria-hidden="true" /> : null}
         </Button>
       }
     >
       <ErrorBanner message={error} />
       {local ? (
-        <div className="flex items-center gap-2">
-          <PendingBadge />
-          <span className="text-base text-slate-700">Holat telefonda saqlanmoqda</span>
-        </div>
+        <Notice icon={CloudOff}>
+          <span className="flex flex-wrap items-center gap-2">
+            <PendingBadge />
+            <span>Holat telefonda saqlanmoqda</span>
+          </span>
+        </Notice>
       ) : null}
 
-      <Card className="space-y-3">
-        <label className="block">
-          <span className="mb-1 block text-base font-semibold text-slate-700">Shikoyat</span>
-          <textarea
-            className="w-full rounded-xl border-2 border-slate-300 px-4 py-3 text-lg outline-none focus:border-sky-600"
+      <div className="grid gap-4 sm:gap-5 @3xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] @3xl:items-start">
+        <Card>
+          <CardTitle icon={MessageSquareText}>Shikoyat</CardTitle>
+          <TextArea
+            label="Bemor nimadan shikoyat qilyapti?"
             value={complaint}
             onChange={(e) => setComplaint(e.target.value)}
             placeholder="Oʻng qoʻli ishlamayapti, gapirolmayapti"
           />
-        </label>
 
-        <button
-          type="button"
-          onClick={() => void toggleRecording()}
-          disabled={voiceBusy}
-          className={`flex min-h-[56px] w-full items-center justify-center gap-3 rounded-xl border-2 text-lg font-semibold ${
-            recording
-              ? 'nazar-pulse border-red-700 bg-red-600 text-white'
-              : 'border-slate-300 bg-white text-slate-800'
-          }`}
-        >
-          <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
-          </svg>
-          {recording ? 'Toʻxtatish va yuborish' : voiceBusy ? 'Yuborilmoqda…' : 'Ovoz bilan aytish'}
-        </button>
-        {voiceNote ? <p className="text-base text-slate-700">{voiceNote}</p> : null}
-        {!online ? (
-          <p className="text-sm text-slate-500">Internet yoʻq — ovoz navbatga qoʻyiladi.</p>
-        ) : null}
-      </Card>
+          {/* F-02: voice is optional; the text field above always works. */}
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3 sm:p-4">
+            <div className="flex flex-col gap-3 @xl:flex-row @xl:items-center">
+              <button
+                type="button"
+                onClick={() => void toggleRecording()}
+                disabled={voiceBusy}
+                aria-pressed={recording}
+                className={`inline-flex min-h-14 shrink-0 items-center justify-center gap-3 rounded-xl px-5 text-lg font-semibold transition-colors lg:min-h-12 lg:text-base ${
+                  recording
+                    ? 'animate-soft-pulse bg-red-600 text-white shadow-sm'
+                    : 'border border-slate-300 bg-white text-slate-900 shadow-sm hover:bg-slate-50 disabled:text-slate-400'
+                }`}
+              >
+                {voiceBusy ? (
+                  <Spinner className="h-6 w-6" />
+                ) : recording ? (
+                  <Square className="h-5 w-5 fill-current" aria-hidden="true" />
+                ) : (
+                  <Mic className="h-6 w-6 text-brand-600" aria-hidden="true" />
+                )}
+                {recording ? 'Toʻxtatish va yuborish' : voiceBusy ? 'Yuborilmoqda…' : 'Ovoz bilan aytish'}
+              </button>
+              <p className="flex items-start gap-2 text-base text-amber-900">
+                <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" aria-hidden="true" />
+                <span>Bemorning ismini aytmang — ovoz tahlil uchun bulut xizmatiga yuboriladi.</span>
+              </p>
+            </div>
+            {voiceNote ? (
+              <p className="mt-3 flex items-start gap-2 border-t border-slate-200 pt-3 text-base text-slate-700" aria-live="polite">
+                <Mic className="mt-0.5 h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+                <span>{voiceNote}</span>
+              </p>
+            ) : null}
+            {!online ? (
+              <p className="mt-2 text-sm text-slate-500">Internet yoʻq — ovoz navbatga qoʻyiladi.</p>
+            ) : null}
+          </div>
+        </Card>
+
+        <Card>
+          <CardTitle icon={TriangleAlert}>Xavfli belgilar</CardTitle>
+          <div className="grid gap-3 @xl:grid-cols-3 @3xl:grid-cols-1">
+            {FLAG_KEYS.map((key) => (
+              <ChoiceButton
+                key={key}
+                pressed={flags[key]}
+                tone="danger"
+                size="md"
+                spread
+                onClick={() => setFlags((current) => ({ ...current, [key]: !current[key] }))}
+              >
+                <span className="text-left">{FLAG_LABEL[key]}</span>
+                <span
+                  className={`rounded-md px-2 py-0.5 text-sm font-bold ${
+                    flags[key] ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {flags[key] ? 'HA' : 'YOʻQ'}
+                </span>
+              </ChoiceButton>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {!showBefast ? (
-        <Button variant="secondary" onClick={() => setShowBefast(true)}>
-          Insult shubhasi? — BE-FAST
-        </Button>
+        <button
+          type="button"
+          onClick={() => setShowBefast(true)}
+          className="group flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-slate-300 bg-white p-4 text-left shadow-card transition hover:border-brand-400 hover:bg-brand-50/40 sm:p-5"
+        >
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-700">
+            <Brain className="h-7 w-7" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-lg font-semibold text-slate-900">Insult shubhasi? — BE-FAST</span>
+            <span className="block text-base text-slate-600">5 ta savol va simptom vaqti</span>
+          </span>
+          <ChevronRight className="h-6 w-6 shrink-0 text-slate-400 group-hover:text-brand-600" aria-hidden="true" />
+        </button>
       ) : null}
 
       {showBefast ? (
-        <section className="space-y-3">
+        <section className="space-y-3 sm:space-y-4" aria-label="BE-FAST">
+          {/* Sticks under the app bar so the score stays in view while answering. */}
           <div
-            className={`rounded-2xl px-4 py-3 ${
-              suspected ? 'bg-red-600 text-white' : 'bg-white text-slate-900 border border-slate-200'
+            className={`sticky top-18 z-20 rounded-2xl px-4 py-2.5 shadow-raised sm:px-5 sm:py-3 ${
+              suspected ? 'bg-red-600 text-white' : 'border border-slate-200 bg-white text-slate-900'
             }`}
+            aria-live="polite"
           >
-            <div className="text-2xl font-bold">
-              BE-FAST: {score} ball
-            </div>
-            <div className="text-base">
-              {suspected
-                ? 'INSULT SHUBHASI — vaqt oynasi muhim'
-                : 'Hozircha insult belgilari yoʻq'}
-            </div>
-            {meta ? (
-              <div className="mt-1 text-sm opacity-90">
-                Chegara: {meta.befast.stroke_min_score} ball yoki F/A/S dan bittasi · qoidalar{' '}
-                {meta.rules_version}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-0.5">
+              <div className="flex items-center gap-2 text-xl font-bold tracking-tight sm:text-2xl">
+                <Activity className="h-6 w-6" aria-hidden="true" />
+                BE-FAST: {score} ball
               </div>
-            ) : (
-              <div className="mt-1 text-sm opacity-90">Chegaralar serverdan olinmadi</div>
-            )}
+              <div className="text-base font-semibold sm:text-lg">
+                {suspected ? 'INSULT SHUBHASI — vaqt oynasi muhim' : 'Hozircha insult belgilari yoʻq'}
+              </div>
+            </div>
+            <div className={`mt-1 hidden text-sm sm:block ${suspected ? 'text-red-50' : 'text-slate-500'}`}>
+              {thresholdText}
+            </div>
           </div>
+          {/* Phones: the rule line scrolls away instead of taking sticky space. */}
+          <p className="px-1 text-sm text-slate-500 sm:hidden">{thresholdText}</p>
 
-          {BEFAST_QUESTIONS.map((question) => {
-            const key = question.key as BefastKey
-            const value = befast[key]
-            return (
-              <Card key={key}>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                    <BefastIcon name={key} className="h-8 w-8" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-lg font-bold text-slate-900">
-                      <span className="mr-2 rounded bg-slate-900 px-2 py-0.5 text-base text-white">
-                        {question.letter}
-                      </span>
-                      {question.title}
+          <div className="grid gap-3 sm:gap-4 @2xl:grid-cols-2 @4xl:grid-cols-3">
+            {BEFAST_QUESTIONS.map((question) => {
+              const key = question.key as BefastKey
+              const value = befast[key]
+              return (
+                <div
+                  key={key}
+                  className={`flex flex-col rounded-2xl border bg-white p-4 shadow-card transition sm:p-5 ${
+                    value ? 'border-red-300 ring-2 ring-red-500/15' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+                        value ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      <BefastIcon name={key} className="h-8 w-8" />
                     </div>
-                    <p className="mt-1 text-base text-slate-600">{question.hint}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Ball: {meta?.befast.points[key] ?? '—'}
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-slate-900 px-1.5 text-sm font-bold text-white">
+                          {question.letter}
+                        </span>
+                        <span className="text-sm text-slate-500">Ball: {meta?.befast.points[key] ?? '—'}</span>
+                      </div>
+                      <h3 className="mt-1.5 text-lg font-semibold leading-snug text-slate-900">{question.title}</h3>
+                      <p className="mt-0.5 text-base text-slate-600">{question.hint}</p>
+                    </div>
+                  </div>
+                  <div className="mt-auto grid grid-cols-2 gap-2 pt-4">
+                    <ChoiceButton
+                      pressed={value}
+                      tone="danger"
+                      onClick={() => setBefast((current) => ({ ...current, [key]: true }))}
+                    >
+                      HA
+                    </ChoiceButton>
+                    <ChoiceButton
+                      pressed={!value}
+                      tone="ink"
+                      onClick={() => setBefast((current) => ({ ...current, [key]: false }))}
+                    >
+                      YOʻQ
+                    </ChoiceButton>
                   </div>
                 </div>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    aria-pressed={value}
-                    onClick={() => setBefast((current) => ({ ...current, [key]: true }))}
-                    className={`min-h-[56px] rounded-xl border-2 text-lg font-bold ${
-                      value ? 'border-red-800 bg-red-600 text-white' : 'border-slate-300 bg-white'
-                    }`}
-                  >
-                    HA
-                  </button>
-                  <button
-                    type="button"
-                    aria-pressed={!value}
-                    onClick={() => setBefast((current) => ({ ...current, [key]: false }))}
-                    className={`min-h-[56px] rounded-xl border-2 text-lg font-bold ${
-                      !value ? 'border-slate-700 bg-slate-700 text-white' : 'border-slate-300 bg-white'
-                    }`}
-                  >
-                    YOʻQ
-                  </button>
-                </div>
-              </Card>
-            )
-          })}
+              )
+            })}
 
-          {/* The T of BE-FAST: the onset recorded on N3 drives the whole time window. */}
-          <Card>
-            <div className="flex items-start gap-3">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
-                <BefastIcon name="time" className="h-8 w-8" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-lg font-bold text-slate-900">
-                  <span className="mr-2 rounded bg-slate-900 px-2 py-0.5 text-base text-white">T</span>
-                  Vaqt — simptom qachon boshlandi?
+            {/* The T of BE-FAST: the onset recorded on N3 drives the whole time window. */}
+            <div className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-card sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                  <BefastIcon name="time" className="h-8 w-8" />
                 </div>
-                {onsetAt ? (
-                  <p className="mt-1 text-base text-slate-700">
-                    {clockTime(onsetAt)} · {elapsed != null ? `${humanMinutes(elapsed)} oʻtdi` : ''}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-base font-semibold text-amber-800">
-                    Vaqt yozilmagan — vaqt oynasi hisoblanmaydi.
-                  </p>
-                )}
+                <div className="min-w-0 flex-1">
+                  <span className="inline-flex h-7 min-w-7 items-center justify-center rounded-md bg-slate-900 px-1.5 text-sm font-bold text-white">
+                    T
+                  </span>
+                  <h3 className="mt-1.5 text-lg font-semibold leading-snug text-slate-900">
+                    Vaqt — simptom qachon boshlandi?
+                  </h3>
+                  {onsetAt ? (
+                    <p className="mt-0.5 text-base text-slate-700">
+                      <b className="tabular-nums">{clockTime(onsetAt)}</b>
+                      {elapsed != null ? ` · ${humanMinutes(elapsed)} oʻtdi` : ''}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-base font-semibold text-amber-800">
+                      Vaqt yozilmagan — vaqt oynasi hisoblanmaydi.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </Card>
+          </div>
         </section>
       ) : null}
-
-      <Card className="space-y-3">
-        <span className="block text-base font-semibold text-slate-700">Xavfli belgilar</span>
-        {FLAG_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            aria-pressed={flags[key]}
-            onClick={() => setFlags((current) => ({ ...current, [key]: !current[key] }))}
-            className={`flex min-h-[56px] w-full items-center justify-between rounded-xl border-2 px-4 text-lg font-semibold ${
-              flags[key] ? 'border-red-800 bg-red-600 text-white' : 'border-slate-300 bg-white text-slate-800'
-            }`}
-          >
-            <span>{FLAG_LABEL[key]}</span>
-            <span className="text-base">{flags[key] ? 'HA' : 'YOʻQ'}</span>
-          </button>
-        ))}
-      </Card>
 
       {suspected && !onsetAt ? (
         <InfoBanner>

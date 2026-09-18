@@ -63,6 +63,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  // The cached facility name belongs to the previous user; drop it on a new login.
+  const forgetFacility = useCallback(() => {
+    setFacilityName(null)
+    try {
+      localStorage.removeItem(FACILITY_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [])
+
   useEffect(() => {
     setUnauthorizedHandler(() => {
       clearSession()
@@ -104,8 +114,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (phone: string, password: string) => {
     const result = await api.login(phone, password)
     setSession(result.access_token, result.user)
+    forgetFacility()
     setUser(result.user)
-  }, [])
+  }, [forgetFacility])
 
   const value = useMemo<AppState>(
     () => ({

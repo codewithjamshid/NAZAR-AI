@@ -5,20 +5,24 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { ArrowRight, Clock, Moon, PencilLine, TimerReset, UserRound } from 'lucide-react'
 import { NetworkError, api } from '../api/client'
 import type { Sex } from '../api/types'
-import { Button, Card, ErrorBanner, Field, Screen } from '../components/ui'
+import {
+  Button, Card, CardTitle, ChoiceButton, ErrorBanner, FOOTER_ACTION, Field, FieldLabel, Screen, Spinner,
+} from '../components/ui'
+import type { Icon } from '../components/ui'
 import { createPendingCase } from '../offline/db'
-import { fromLocalTimeInput, isoMinutesAgo, isoNow, toLocalTimeInput } from '../lib/time'
+import { clockTime, fromLocalTimeInput, isoMinutesAgo, isoNow, toLocalTimeInput } from '../lib/time'
 import { useApp } from '../state/AppContext'
 
 type OnsetMode = 'now' | 'hour' | 'wakeup' | 'custom'
 
-const ONSET_OPTIONS: { mode: OnsetMode; label: string }[] = [
-  { mode: 'now', label: 'Hozir' },
-  { mode: 'hour', label: '1 soat oldin' },
-  { mode: 'wakeup', label: 'Uygʻonganda' },
-  { mode: 'custom', label: 'Boshqa vaqt' },
+const ONSET_OPTIONS: { mode: OnsetMode; label: string; icon: Icon }[] = [
+  { mode: 'now', label: 'Hozir', icon: Clock },
+  { mode: 'hour', label: '1 soat oldin', icon: TimerReset },
+  { mode: 'wakeup', label: 'Uygʻonganda', icon: Moon },
+  { mode: 'custom', label: 'Boshqa vaqt', icon: PencilLine },
 ]
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -53,6 +57,9 @@ export function NewCaseScreen() {
     if (onsetMode === 'hour') return isoMinutesAgo(60)
     return fromLocalTimeInput(onsetTime)
   }
+
+  // What will be sent, in words, so the nurse can check it before "Boshlash".
+  const onsetPreview = onsetIso()
 
   async function submit(event: FormEvent) {
     event.preventDefault()
@@ -93,119 +100,129 @@ export function NewCaseScreen() {
       title="Yangi holat"
       subtitle={facilityName ?? undefined}
       back="/"
+      footerNote="Keyingi qadam: anamnez va BE-FAST"
       footer={
-        <Button type="submit" form="new-case" disabled={busy}>
+        <Button type="submit" form="new-case" disabled={busy} className={FOOTER_ACTION}>
+          {busy ? <Spinner /> : null}
           {busy ? 'Saqlanmoqda…' : 'Boshlash'}
+          {!busy ? <ArrowRight className="h-5 w-5" aria-hidden="true" /> : null}
         </Button>
       }
     >
-      <form id="new-case" onSubmit={submit} className="space-y-4">
+      <form id="new-case" onSubmit={submit} className="space-y-4 sm:space-y-5" noValidate>
         <ErrorBanner message={error} />
 
-        <Card className="space-y-4">
-          <Field
-            label="Ism familiya"
-            value={fullName}
-            autoComplete="off"
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Bekmurod Aka"
-            required
-          />
-          <Field
-            label="Yosh yoki tugʻilgan yil"
-            inputMode="numeric"
-            value={ageOrYear}
-            onChange={(e) => setAgeOrYear(e.target.value)}
-            placeholder="58"
-            hint={
-              birthYear
-                ? `Tugʻilgan yil: ${birthYear} · ${CURRENT_YEAR - birthYear} yosh`
-                : 'Masalan 58 (yosh) yoki 1968 (yil)'
-            }
-          />
-          <div>
-            <span className="mb-1 block text-base font-semibold text-slate-700">Jins</span>
-            <div className="grid grid-cols-2 gap-3">
-              {(['male', 'female'] as Sex[]).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setSex(option)}
-                  aria-pressed={sex === option}
-                  className={`min-h-[56px] rounded-xl border-2 text-lg font-semibold ${
-                    sex === option
-                      ? 'border-sky-700 bg-sky-700 text-white'
-                      : 'border-slate-300 bg-white text-slate-800'
-                  }`}
-                >
-                  {option === 'male' ? 'Erkak' : 'Ayol'}
-                </button>
-              ))}
+        <Card>
+          <CardTitle icon={UserRound}>Bemor</CardTitle>
+          <div className="grid gap-4 @xl:grid-cols-2 @xl:gap-5">
+            <Field
+              label="Ism familiya"
+              value={fullName}
+              autoComplete="off"
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Bekmurod Aka"
+              required
+            />
+            <Field
+              label="Yosh yoki tugʻilgan yil"
+              inputMode="numeric"
+              value={ageOrYear}
+              onChange={(e) => setAgeOrYear(e.target.value)}
+              placeholder="58"
+              hint={
+                birthYear
+                  ? `Tugʻilgan yil: ${birthYear} · ${CURRENT_YEAR - birthYear} yosh`
+                  : 'Masalan 58 (yosh) yoki 1968 (yil)'
+              }
+            />
+            <div role="group" aria-label="Jins">
+              <FieldLabel>Jins</FieldLabel>
+              <div className="grid grid-cols-2 gap-3">
+                {(['male', 'female'] as Sex[]).map((option) => (
+                  <ChoiceButton key={option} pressed={sex === option} onClick={() => setSex(option)}>
+                    {option === 'male' ? 'Erkak' : 'Ayol'}
+                  </ChoiceButton>
+                ))}
+              </div>
             </div>
+            <Field
+              label="Telefon (ixtiyoriy)"
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+998911112233"
+            />
           </div>
-          <Field
-            label="Telefon (ixtiyoriy)"
-            type="tel"
-            inputMode="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="+998911112233"
-          />
         </Card>
 
-        <Card className="space-y-3">
-          <span className="block text-base font-semibold text-slate-700">
-            Simptom qachon boshlandi?
-          </span>
-          <div className="grid grid-cols-2 gap-3">
-            {ONSET_OPTIONS.map((option) => (
-              <button
-                key={option.mode}
-                type="button"
-                onClick={() => {
-                  setOnsetMode(option.mode)
-                  if (option.mode === 'custom' || option.mode === 'wakeup') {
-                    setOnsetTime(toLocalTimeInput(isoNow()))
-                  }
-                }}
-                aria-pressed={onsetMode === option.mode}
-                className={`min-h-[56px] rounded-xl border-2 px-2 text-base font-semibold ${
-                  onsetMode === option.mode
-                    ? 'border-sky-700 bg-sky-700 text-white'
-                    : 'border-slate-300 bg-white text-slate-800'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+        <Card>
+          <CardTitle icon={Clock}>Simptom qachon boshlandi?</CardTitle>
+          <div className="grid grid-cols-2 gap-3 @xl:grid-cols-4">
+            {ONSET_OPTIONS.map((option) => {
+              const OptionIcon = option.icon
+              return (
+                <ChoiceButton
+                  key={option.mode}
+                  pressed={onsetMode === option.mode}
+                  size="md"
+                  stacked
+                  onClick={() => {
+                    setOnsetMode(option.mode)
+                    if (option.mode === 'custom' || option.mode === 'wakeup') {
+                      setOnsetTime(toLocalTimeInput(isoNow()))
+                    }
+                  }}
+                >
+                  <OptionIcon className="h-5 w-5 shrink-0" aria-hidden="true" />
+                  {option.label}
+                </ChoiceButton>
+              )
+            })}
           </div>
 
           {onsetMode === 'wakeup' ? (
-            <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3">
-              <p className="mb-2 text-base text-amber-900">
+            <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <p className="mb-3 text-base text-amber-950">
                 Uyqudan keyin boshlangan boʻlsa, vaqt oynasi <b>oxirgi marta sogʻlom koʻrilgan</b> paytdan
                 sanaladi. Bemor kecha soat nechada yotgan?
               </p>
+              <div className="max-w-xs">
+                <Field
+                  label="Oxirgi marta sogʻlom koʻrilgan vaqt"
+                  type="time"
+                  value={onsetTime}
+                  onChange={(e) => setOnsetTime(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {onsetMode === 'custom' ? (
+            <div className="mt-4 max-w-xs">
               <Field
-                label="Oxirgi marta sogʻlom koʻrilgan vaqt"
+                label="Simptom boshlangan vaqt"
                 type="time"
                 value={onsetTime}
                 onChange={(e) => setOnsetTime(e.target.value)}
+                hint="Masalan 07:40. Kelajakdagi vaqt kechagi kun deb olinadi."
                 required
               />
             </div>
           ) : null}
 
-          {onsetMode === 'custom' ? (
-            <Field
-              label="Simptom boshlangan vaqt"
-              type="time"
-              value={onsetTime}
-              onChange={(e) => setOnsetTime(e.target.value)}
-              hint="Masalan 07:40. Kelajakdagi vaqt kechagi kun deb olinadi."
-              required
-            />
-          ) : null}
+          <p className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-3 text-base text-slate-600">
+            <Clock className="h-5 w-5 shrink-0 text-slate-400" aria-hidden="true" />
+            {onsetPreview ? (
+              <span>
+                Vaqt oynasi shu paytdan sanaladi:{' '}
+                <b className="text-slate-900 tabular-nums">{clockTime(onsetPreview)}</b>
+              </span>
+            ) : (
+              <span>Vaqtni kiriting</span>
+            )}
+          </p>
         </Card>
       </form>
     </Screen>

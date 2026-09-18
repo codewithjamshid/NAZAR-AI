@@ -18,7 +18,8 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         display: 'standalone',
-        orientation: 'portrait',
+        // Phones in portrait, tablets and desktops in any orientation.
+        orientation: 'any',
         background_color: '#0f172a',
         theme_color: '#0f172a',
         icons: [

@@ -20,19 +20,6 @@ export function zoneLabel(zone: Zone | null | undefined): string {
   return `${ZONE_WORD[zone]} — ${ZONE_URGENCY[zone]}`
 }
 
-/** Badge classes: strong background, plus a distinct border so shape helps too. */
-export const ZONE_BADGE: Record<Zone, string> = {
-  red: 'bg-red-600 text-white border-red-800',
-  yellow: 'bg-amber-400 text-slate-900 border-amber-600',
-  green: 'bg-green-600 text-white border-green-800',
-}
-
-export const ZONE_BLOCK: Record<Zone, string> = {
-  red: 'bg-red-600 text-white',
-  yellow: 'bg-amber-400 text-slate-900',
-  green: 'bg-green-600 text-white',
-}
-
 export const SPECIALIST: Record<string, string> = {
   neurologist: 'Nevrolog',
   neurosurgeon: 'Neyroxirurg',
@@ -84,6 +71,13 @@ export const STUDY_STATUS: Record<string, string> = {
 
 export const SEX: Record<string, string> = { male: 'Erkak', female: 'Ayol' }
 
+export const ROLE: Record<string, string> = {
+  nurse: 'Hamshira',
+  operator: 'Tuman operatori',
+  specialist: 'Mutaxassis',
+  admin: 'Administrator',
+}
+
 export const FLAG_LABEL: Record<string, string> = {
   unconscious: 'Hushsizlik',
   breathing_difficulty: 'Nafas qiyinlashuvi',
@@ -116,6 +110,10 @@ export const BEFAST_QUESTIONS: { key: string; letter: string; title: string; hin
   { key: 'arms', letter: 'A', title: 'Qoʻli kuchsizmi?', hint: 'Ikki qoʻlini koʻtarsin — biri tushib ketyaptimi?' },
   { key: 'speech', letter: 'S', title: 'Nutqi buzilganmi?', hint: 'Gapi tushunarsizmi, soʻz topolmayaptimi?' },
 ]
+
+export function roleLabel(role: string | null | undefined): string {
+  return role ? (ROLE[role] ?? role) : '—'
+}
 
 export function sexLabel(sex: string | null | undefined): string {
   return sex ? (SEX[sex] ?? sex) : '—'
