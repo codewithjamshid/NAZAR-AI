@@ -21,6 +21,11 @@ class TriageResult(Base):
     time_window_min: Mapped[int | None] = mapped_column(Integer)
     readers_agree: Mapped[bool | None] = mapped_column(Boolean)
     rules_version: Mapped[str] = mapped_column(String(32))
+    summary_nurse: Mapped[str | None] = mapped_column(Text)
+    summary_specialist: Mapped[str | None] = mapped_column(Text)
+    report_model: Mapped[str | None] = mapped_column(String(64))
+    signals_json: Mapped[list | None] = mapped_column(JSONType)
+    stroke_json: Mapped[dict | None] = mapped_column(JSONType)
     computed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

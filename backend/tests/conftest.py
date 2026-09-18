@@ -22,3 +22,12 @@ def db():
         session.close()
         trans.rollback()
         conn.close()
+
+
+@pytest.fixture(autouse=True)
+def no_celery(monkeypatch):
+    """Tests never hand work to a real broker; the pipeline is tested directly."""
+    from app.workers import tasks
+
+    monkeypatch.setattr(tasks.process_study, "delay", lambda *a, **k: None)
+    monkeypatch.setattr(tasks.write_report, "delay", lambda *a, **k: None)

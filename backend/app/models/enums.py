@@ -68,6 +68,13 @@ class StudyType(StrEnum):
     VOICE = "voice"
 
 
+class StudyStatus(StrEnum):
+    QUEUED = "queued"
+    PROCESSING = "processing"
+    DONE = "done"
+    FAILED = "failed"
+
+
 class StudySource(StrEnum):
     DICOM = "dicom"
     PHOTO = "photo"

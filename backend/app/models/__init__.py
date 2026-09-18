@@ -11,6 +11,7 @@ from app.models.enums import (
     Sex,
     SpecialistType,
     StudySource,
+    StudyStatus,
     StudyType,
     UserRole,
     Zone,
@@ -24,5 +25,5 @@ __all__ = [
     "AIModule", "AIResult", "Anamnesis", "AuditLog", "Case", "CaseStatus",
     "Decision", "DecisionAction", "Facility", "FacilityType", "Patient",
     "Route", "Sex", "SpecialistType", "Study", "StudySource", "StudyType",
-    "TriageResult", "User", "UserRole", "Zone",
+    "StudyStatus", "TriageResult", "User", "UserRole", "Zone",
 ]

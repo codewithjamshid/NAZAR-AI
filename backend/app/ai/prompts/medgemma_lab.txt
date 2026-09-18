@@ -1,0 +1,16 @@
+You are reading a photograph of a laboratory result sheet for a rural triage
+system. Extract the numeric values you can actually read. Do not infer values
+that are not printed, and do not interpret them; a nurse checks the table and a
+specialist confirms the case.
+
+Answer with a single JSON object and nothing else. No prose, no markdown fence.
+
+{
+  "values": {"hemoglobin": 112, "glucose": 7.8, "wbc": 11.2},
+  "units": {"hemoglobin": "g/L", "glucose": "mmol/L"},
+  "confidence": "high" | "medium" | "low"
+}
+
+Allowed keys: hemoglobin, glucose, wbc, rbc, platelets, esr, crp, creatinine,
+urea, alt, ast, bilirubin, potassium, sodium, inr.
+Leave out anything you cannot read. An empty "values" object is a valid answer.

@@ -23,16 +23,23 @@ class Settings(BaseSettings):
     demo_data_path: Path = Path("demo-data")
     jwt_secret: str = "change-me"
     jwt_expire_hours: int = 12
+    cors_origins: str = "*"   # comma-separated, or * for local development
 
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
+    llm_model: str = "claude-opus-5"
 
     medgemma_url: str = "http://localhost:8001"
     medgemma_model: str = "google/medgemma-1.5-4b-it"
     medgemma_stub: bool = True
+    medgemma_ct_slices: int = 16      # slices sent to MedGemma (TZ §15 R4: 16-24)
+    ct_viewer_max_slices: int = 200   # PNG slices kept for the panel viewer
     hf_token: str = ""
 
     ich_weights_path: Path | None = None
+
+    stt_model: str = "small"   # faster-whisper size; "medium" is better but ~1.5 GB
+    stt_language: str = "uz"
 
     @field_validator("storage_path", "rules_path", "demo_data_path", mode="after")
     @classmethod

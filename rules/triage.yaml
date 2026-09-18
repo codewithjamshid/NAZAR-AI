@@ -1,0 +1,126 @@
+# NAZAR AI — klinik triyaj qoidalari (TZ §8).
+#
+# EGASI: neyroxirurg (klinik rahbar). Muhandislar bu yerdagi raqamlarni o'zgartirmaydi.
+# Holat: DRAFT. Raqamlar TZ §8 dagi "boshlang'ich taklif" jadvallaridan ko'chirilgan.
+# "REVIEW" izohli joylarda TZ ikki variantni ko'rsatgan yoki qiymat berilmagan —
+# neyroxirurg tasdiqlashi kerak.
+#
+# Kod bu fayldan faqat raqam va ro'yxatlarni oladi; mantiq services/triage.py da.
+
+version: "2026-09-18-draft1"
+
+# --- BE-FAST anketasi (TZ §8) ------------------------------------------------
+befast:
+  points:
+    balance: 1
+    eyes: 1
+    face: 2
+    arms: 2
+    speech: 2
+  # "Ball >= 2 yoki F/A/S dan bittasi 'ha' -> insult shubhasi"
+  stroke_min_score: 2
+  stroke_any_of: [face, arms, speech]
+
+# --- Insult vaqt oynasi (TZ §8) ----------------------------------------------
+stroke_window:
+  warning_min: 180       # taymer sariqqa o'tadi (3 soat)
+  thrombolysis_min: 270  # oyna yopiladi (4,5 soat)
+
+# --- Bosh KT (TZ §7 M3, §8) --------------------------------------------------
+ct_head:
+  ich_probability:
+    high: 0.8        # >= high  -> qizil
+    moderate: 0.3    # [moderate, high) -> sariq; < moderate "qon quyilishi yo'q"
+    agree_at: 0.5    # CNN "qon bor" deb hisoblanadigan chegara (ikki o'quvchini solishtirish uchun)
+
+# --- Ko'krak rentgeni (TZ §7 M4, §8) -----------------------------------------
+cxr:
+  finding_min: 0.5   # "patologiya >= 0,5 belgilanadi"
+  red:
+    Pneumothorax: 0.7
+  yellow:
+    Pneumonia: 0.6
+    Consolidation: 0.6
+    Effusion: 0.6
+  multi_pathology_min_count: 2   # "ikki va undan ko'p patologiya" -> sariq
+
+# --- Tahlillar (TZ §8) -------------------------------------------------------
+labs:
+  # TZ faqat glyukozani misol qilib bergan. Boshqa kritik chegaralarni
+  # neyroxirurg shu yerga qo'shadi.
+  critical:
+    glucose: {below: 3.0, above: 15.0}   # mmol/L
+  # REVIEW: norma oralig'i (panelda "norma tashqarisi" deb belgilash uchun).
+  # Bo'sh bo'lsa faqat yuqoridagi kritik qiymatlar belgilanadi.
+  reference: {}
+
+# --- Zonalar: qaysi signal qaysi zonani chiqaradi (TZ §8) --------------------
+# Bittasi yetarli. Hech biri chiqmasa -> yashil.
+zones:
+  red:
+    - stroke_in_window        # insult shubhasi + 4,5 soat o'tmagan
+    - ich_high                # ICH ehtimoli >= 0.8
+    - ct_hemorrhage           # MedGemma: qon quyilishi bor + ishonch yuqori
+    - cxr_red                 # Pneumothorax >= 0.7
+    - red_flag_unconscious    # anketa: hushsizlik
+    - red_flag_breathing      # anketa: nafas qiyinlashuvi
+  yellow:
+    - stroke_late             # insult shubhasi, lekin 4,5 soatdan o'tgan
+    - stroke_onset_unknown    # insult shubhasi, vaqt noma'lum (ma'lumot to'liq emas)
+    - ich_moderate            # ICH 0.3-0.8
+    - ct_uncertain            # MedGemma noaniq yoki ishonch past
+    - ct_not_read             # KT yuklandi, AI o'qimadi
+    - ct_single_reader        # faqat MedGemma o'qidi, CNN yo'q, BE-FAST ham yo'q
+    - cxr_yellow
+    - cxr_multi
+    - lab_critical
+    - readers_disagree        # ikki o'quvchi kelishmadi
+    - ai_failed               # modul ishlamadi
+    - data_incomplete         # AI hali hech bir tasvirni o'qimagan
+
+# --- Mutaxassisga yo'naltirish (TZ §8) ---------------------------------------
+# Birinchi mos kelgan qoida ishlaydi. `when` ichidagi kalitlar OR bilan birlashadi.
+routing:
+  - when:
+      any_signal: [ich_high, ct_hemorrhage]
+    specialist: neurosurgeon
+    route: regional
+
+  - when:
+      any_signal: [stroke_in_window, stroke_late, stroke_onset_unknown,
+                   ich_moderate, ct_uncertain, ct_not_read, ct_single_reader]
+    specialist: neurologist
+    route: regional
+
+  - when:
+      cxr_any: {Pneumothorax: 0.5, Consolidation: 0.6}
+    specialist: pulmonologist   # REVIEW: TZ "pulmonolog / xirurg"
+    route: district             # REVIEW: TZ "tuman yoki viloyat"
+
+  - when:
+      cxr_any: {Pneumonia: 0.5, Effusion: 0.5}
+    specialist: therapist       # REVIEW: TZ "terapevt / pulmonolog"
+    route: district
+
+  - when:
+      cxr_any: {Cardiomegaly: 0.5, Enlarged Cardiomediastinum: 0.5}
+      any_flag: [chest_pain]
+    specialist: cardiologist
+    route: regional
+
+  - when:
+      cxr_any: {Nodule: 0.5, Mass: 0.5, Lung Lesion: 0.5}
+    specialist: oncologist      # REVIEW: TZ "onkolog / radiolog"
+    route: regional
+
+  - when:
+      always: true
+    specialist: family_doctor
+    route: onsite
+
+# Qizil zona yuqoridagi aniq qoidalarning hech biriga tushmasa (masalan faqat
+# hushsizlik belgilangan bo'lsa), TZ §8 zonalar jadvalidagi qizil harakatga
+# ko'ra nevrologga va viloyatga yuboriladi. REVIEW.
+red_zone_default:
+  specialist: neurologist
+  route: regional
